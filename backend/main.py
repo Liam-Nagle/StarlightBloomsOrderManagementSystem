@@ -51,6 +51,7 @@ async def shutdown_event():
 
 
 # Health check endpoint
+@app.head("/", tags=["Health"])
 @app.get("/", tags=["Health"])
 async def root():
     """Health check endpoint"""
@@ -61,6 +62,7 @@ async def root():
     }
 
 
+@app.head("/health", tags=["Health"])
 @app.get("/health", tags=["Health"])
 async def health_check():
     """Detailed health check"""
