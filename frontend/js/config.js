@@ -7,7 +7,7 @@ const CONFIG = {
     // API Base URL - automatically switches based on environment
     API_BASE_URL: window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
         ? 'http://localhost:8000'
-        : 'https://your-render-app.onrender.com',  // Replace with your actual Render URL
+        : 'https://starlightbloomsordermanagementsystem.onrender.com',  // Replace with your actual Render URL
 
     // API Endpoints
     ENDPOINTS: {
