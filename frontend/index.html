@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Starlight Blooms</title>
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="css/dashboard.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-brand">
+                <h1>🌸 Starlight Blooms</h1>
+            </div>
+            <div class="nav-menu">
+                <a href="index.html" class="nav-link active">Dashboard</a>
+                <a href="orders.html" class="nav-link">Orders</a>
+                <a href="bouquets.html" class="nav-link">Bouquets</a>
+                <a href="materials.html" class="nav-link">Materials</a>
+                <a href="reports.html" class="nav-link">Reports</a>
+            </div>
+        </div>
+    </nav>
+
+    <main class="main-content">
+        <div class="container">
+            <header class="page-header">
+                <h2>Dashboard</h2>
+                <p class="subtitle">Welcome to your order management system</p>
+            </header>
+
+            <!-- Stats Cards -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-icon">📦</div>
+                    <div class="stat-info">
+                        <h3 id="todayOrders">0</h3>
+                        <p>Today's Orders</p>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">⏳</div>
+                    <div class="stat-info">
+                        <h3 id="pendingOrders">0</h3>
+                        <p>Pending Orders</p>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">💷</div>
+                    <div class="stat-info">
+                        <h3 id="todayRevenue">£0.00</h3>
+                        <p>Today's Revenue</p>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">💵</div>
+                    <div class="stat-info">
+                        <h3 id="todayProfit" style="color: var(--success-color);">£0.00</h3>
+                        <p>Today's Profit</p>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon">⚠️</div>
+                    <div class="stat-info">
+                        <h3 id="lowStockCount">0</h3>
+                        <p>Low Stock Items</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Orders -->
+            <section class="dashboard-section">
+                <div class="section-header">
+                    <h3>Recent Orders</h3>
+                    <a href="orders.html" class="btn btn-secondary">View All</a>
+                </div>
+                <div class="table-container">
+                    <table class="data-table" id="recentOrdersTable">
+                        <thead>
+                            <tr>
+                                <th>Order #</th>
+                                <th>Customer</th>
+                                <th>Bouquet</th>
+                                <th>Date</th>
+                                <th>Total</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="recentOrdersBody">
+                            <tr>
+                                <td colspan="6" class="loading">Loading orders...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Low Stock Alert -->
+            <section class="dashboard-section" id="lowStockSection" style="display: none;">
+                <div class="section-header">
+                    <h3>Low Stock Alert</h3>
+                    <a href="materials.html" class="btn btn-secondary">Manage Inventory</a>
+                </div>
+                <div class="alert-list" id="lowStockList">
+                    <!-- Low stock items will be inserted here -->
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <!-- Toast Notification Container -->
+    <div id="toastContainer" class="toast-container"></div>
+
+    <!-- Scripts -->
+    <script src="js/config.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/components/toast.js"></script>
+    <script src="js/pages/dashboard.js"></script>
+</body>
+</html>
