@@ -321,6 +321,7 @@ body {
     }
 
     .nav-menu {
+        display: flex;
         position: fixed;
         top: 0;
         right: -100%;
