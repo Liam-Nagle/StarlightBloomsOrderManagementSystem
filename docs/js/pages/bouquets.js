@@ -121,14 +121,7 @@ function addMaterialRow(materialData = null) {
     row.innerHTML = `
         <div class="form-group" style="flex: 2;">
             <label>Material</label>
-            <select class="material-select" required>
-                <option value="">Select material</option>
-                ${materials.map(m => `
-                    <option value="${m.id}" ${materialData && m.id === materialData.material_id ? 'selected' : ''}>
-                        ${m.name} (${formatCurrency(m.cost_per_unit)}/${m.unit})
-                    </option>
-                `).join('')}
-            </select>
+            <div class="material-select-container"></div>
         </div>
         <div class="form-group" style="flex: 1;">
             <label>Quantity</label>
@@ -139,8 +132,30 @@ function addMaterialRow(materialData = null) {
 
     container.appendChild(row);
 
-    // Add change listeners for pricing preview
-    row.querySelector('.material-select').addEventListener('change', updatePricingPreview);
+    // Create searchable select options
+    const options = materials.map(m => ({
+        value: m.id,
+        label: m.name,
+        meta: `${formatCurrency(m.cost_per_unit)}/${m.unit}`
+    }));
+
+    // Initialize searchable select
+    const selectContainer = row.querySelector('.material-select-container');
+    const searchableSelect = new SearchableSelect(
+        selectContainer,
+        options,
+        () => updatePricingPreview()
+    );
+
+    // Set pre-selected value if editing
+    if (materialData?.material_id) {
+        searchableSelect.setValue(materialData.material_id);
+    }
+
+    // Store reference to searchable select for later retrieval
+    row.searchableSelect = searchableSelect;
+
+    // Add listener for quantity changes
     row.querySelector('.material-quantity').addEventListener('input', updatePricingPreview);
 }
 
@@ -193,7 +208,7 @@ function getMaterialsFromForm() {
     const materialsData = [];
 
     rows.forEach(row => {
-        const materialId = row.querySelector('.material-select').value;
+        const materialId = row.searchableSelect?.getValue();
         const quantity = parseFloat(row.querySelector('.material-quantity').value);
 
         if (materialId && quantity > 0) {
