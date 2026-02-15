@@ -66,12 +66,33 @@ StarlightBloomsTrackingWebsite/
 │   │   └── order_service.py
 │   └── utils/
 │       └── seed_data.py           # Database seeding
-├── frontend/
+├── docs/                          # Frontend (GitHub Pages)
 │   ├── index.html                 # Dashboard
 │   ├── orders.html                # Orders page
+│   ├── bouquets.html              # Bouquets page
+│   ├── materials.html             # Materials page
+│   ├── reports.html               # Reports page
 │   ├── css/                       # Stylesheets
+│   │   ├── main.css
+│   │   ├── dashboard.css
+│   │   ├── forms.css
+│   │   └── tables.css
 │   └── js/                        # JavaScript files
+│       ├── config.js
+│       ├── api.js
+│       ├── utils.js
+│       ├── mobile-nav.js
+│       ├── components/
+│       │   ├── modal.js
+│       │   └── toast.js
+│       └── pages/
+│           ├── dashboard.js
+│           ├── orders.js
+│           ├── bouquets.js
+│           ├── materials.js
+│           └── reports.js
 ├── requirements.txt
+├── runtime.txt                    # Python version for Render
 ├── .env.example
 └── render.yaml                    # Deployment config
 ```
@@ -145,16 +166,16 @@ The API will be available at:
 
 ### 5. Start the Frontend
 
-Open a new terminal and navigate to the frontend directory:
+Open a new terminal and navigate to the docs directory:
 
 **Option 1: Using VS Code Live Server (Recommended)**
 1. Install "Live Server" extension in VS Code
-2. Right-click on `frontend/index.html`
+2. Right-click on `docs/index.html`
 3. Select "Open with Live Server"
 
 **Option 2: Using Python HTTP Server**
 ```bash
-cd frontend
+cd docs
 python -m http.server 5500
 ```
 
@@ -224,45 +245,39 @@ The frontend will be available at: http://localhost:5500
 4. Connect your GitHub repository
 5. Render will detect `render.yaml` automatically
 6. Add environment variables in Render dashboard:
-   - `MONGODB_URL` - Your MongoDB Atlas connection string
+   - `MONGODB_URL` - Your MongoDB Atlas connection string (with `&tls=true` parameter)
    - `ALLOWED_ORIGINS` - Your GitHub Pages URL
+   - `ENVIRONMENT` - Set to `production`
+
+**Note**: Render free tier spins down after 15 minutes of inactivity. See "Keeping Backend Alive" section below.
 
 ### Frontend (GitHub Pages)
 
-1. Update `frontend/js/config.js`:
+1. Update `docs/js/config.js` with production API URL:
    ```javascript
-   API_BASE_URL: 'https://your-app-name.onrender.com'
+   API_BASE_URL: 'https://starlightbloomsordermanagementsystem.onrender.com'
    ```
 
 2. Enable GitHub Pages in repository settings:
    - Settings → Pages
    - Source: Deploy from branch
-   - Branch: main
-   - Folder: /frontend
+   - Branch: master
+   - Folder: /docs
 
-3. Access your site at: `https://username.github.io/repo-name/`
+3. Your site will be available at your GitHub Pages URL
 
-## Remaining Work
+### Keeping Backend Alive (UptimeRobot)
 
-### Frontend Pages Still Needed:
+Render's free tier spins down after 15 minutes of inactivity. To keep your backend running:
 
-1. **bouquets.html** - Bouquet management page
-2. **materials.html** - Materials/inventory page
-3. **reports.html** - Analytics page
+1. Create a free account at [UptimeRobot](https://uptimerobot.com)
+2. Create a new monitor:
+   - Monitor Type: HTTP(s)
+   - URL: `https://starlightbloomsordermanagementsystem.onrender.com/`
+   - Monitoring Interval: 5 minutes
+   - Monitor Timeout: 30 seconds
 
-### JavaScript Files Still Needed:
-
-1. **frontend/js/components/modal.js** - Modal component
-2. **frontend/js/pages/orders.js** - Orders page logic
-3. **frontend/js/pages/bouquets.js** - Bouquets page logic
-4. **frontend/js/pages/materials.js** - Materials page logic
-5. **frontend/js/pages/reports.js** - Reports page logic
-
-### CSS Files Still Needed:
-
-1. **frontend/css/dashboard.css** - Dashboard specific styles
-2. **frontend/css/forms.css** - Form styling
-3. **frontend/css/tables.css** - Table styling
+UptimeRobot will ping your API every 5 minutes, keeping it awake and preventing cold starts.
 
 ## Bouquet Pricing Formula
 
