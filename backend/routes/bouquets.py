@@ -27,13 +27,13 @@ async def create_bouquet(bouquet: BouquetCreate):
     """Create a new bouquet"""
     db = get_database()
 
-    # Validate materials
+    # Validate materials exist (don't check stock for bouquet recipes)
     materials_for_validation = [
         {"material_id": m.material_id, "quantity": m.quantity}
         for m in bouquet.materials
     ]
 
-    validation = await validate_materials(materials_for_validation, db)
+    validation = await validate_materials(materials_for_validation, db, check_stock=False)
 
     if not validation["valid"]:
         raise HTTPException(
@@ -126,14 +126,14 @@ async def update_bouquet(bouquet_id: str, bouquet_update: BouquetUpdate):
     if not update_data:
         raise HTTPException(status_code=400, detail="No fields to update")
 
-    # If materials are being updated, validate them
+    # If materials are being updated, validate they exist (don't check stock for bouquet recipes)
     if "materials" in update_data:
         materials_for_validation = [
             {"material_id": m["material_id"], "quantity": m["quantity"]}
             for m in update_data["materials"]
         ]
 
-        validation = await validate_materials(materials_for_validation, db)
+        validation = await validate_materials(materials_for_validation, db, check_stock=False)
 
         if not validation["valid"]:
             raise HTTPException(
@@ -204,8 +204,8 @@ async def calculate_price(request: PriceCalculationRequest):
     """Calculate pricing for a bouquet based on materials and size"""
     db = get_database()
 
-    # Validate materials first
-    validation = await validate_materials(request.materials, db)
+    # Validate materials exist (don't check stock for price calculation)
+    validation = await validate_materials(request.materials, db, check_stock=False)
 
     if not validation["valid"]:
         raise HTTPException(

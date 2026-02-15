@@ -83,14 +83,16 @@ async def calculate_bouquet_pricing(
 
 async def validate_materials(
     materials_list: List[Dict],
-    db: AsyncIOMotorDatabase
+    db: AsyncIOMotorDatabase,
+    check_stock: bool = True
 ) -> Dict[str, any]:
     """
-    Validate that all materials exist and have sufficient stock (if tracked)
+    Validate that all materials exist and optionally have sufficient stock
 
     Args:
         materials_list: List of dicts with 'material_id' and 'quantity'
         db: MongoDB database instance
+        check_stock: If True, validate stock levels. If False, only check existence.
 
     Returns:
         Dict with 'valid' (bool) and 'errors' (list)
@@ -116,8 +118,8 @@ async def validate_materials(
             errors.append(f"Material not found: {material_id}")
             continue
 
-        # Check stock if tracked
-        if material.get("current_stock") is not None:
+        # Check stock only if requested (for orders, not bouquet recipes)
+        if check_stock and material.get("current_stock") is not None:
             if material["current_stock"] < quantity:
                 errors.append(
                     f"Insufficient stock for {material['name']}: "
