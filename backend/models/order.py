@@ -9,7 +9,8 @@ from enum import Enum
 class OrderStatus(str, Enum):
     """Order status values"""
     PENDING = "pending"
-    COMPLETED = "completed"
+    DISPATCHED = "dispatched"
+    COMPLETE = "complete"
     CANCELLED = "cancelled"
 
 
@@ -26,6 +27,8 @@ class OrderBase(BaseModel):
     cost: Optional[float] = Field(None, ge=0, description="Cost of materials for this order")
     profit: Optional[float] = Field(None, description="Profit/loss on this order (total_price - cost)")
     profit_margin: Optional[float] = Field(None, description="Profit margin percentage")
+    wix_order_number: Optional[str] = Field(None, max_length=50, description="Wix order number (e.g., ORD-xxxxx)")
+    tracking_number: Optional[str] = Field(None, max_length=100, description="Delivery tracking number")
 
 
 class OrderCreate(OrderBase):
@@ -43,6 +46,8 @@ class OrderUpdate(BaseModel):
     total_price: Optional[float] = Field(None, ge=0)
     status: Optional[OrderStatus] = None
     notes: Optional[str] = Field(None, max_length=1000)
+    wix_order_number: Optional[str] = Field(None, max_length=50)
+    tracking_number: Optional[str] = Field(None, max_length=100)
 
 
 class OrderInDB(OrderBase):
