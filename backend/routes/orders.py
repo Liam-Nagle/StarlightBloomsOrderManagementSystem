@@ -25,6 +25,69 @@ from backend.wix_integration import notify_wix_dispatch, notify_wix_cancellation
 router = APIRouter()
 
 
+@router.post("/from-wix", response_model=dict, status_code=201)
+async def receive_wix_order(order_data: dict = Body(...)):
+    """Receive order from Wix and store in backend"""
+    db = get_database()
+
+    try:
+        # Generate order number for backend
+        order_number = await generate_order_number(db)
+
+        # Map Wix order data to our order format
+        # Extract items to find bouquet information
+        items = order_data.get("items", [])
+        bouquet_item = items[0] if items else {}
+
+        # Create order dict
+        new_order = {
+            "order_number": order_number,
+            "wix_order_number": order_data.get("orderNumber"),  # Store Wix order number (ORD-xxxxx)
+            "customer_name": order_data.get("customerName", "Wix Customer"),
+            "bouquet_type": bouquet_item.get("name", "Custom Bouquet"),
+            "size": bouquet_item.get("options", {}).get("size", "medium"),
+            "date": order_data.get("deliveryDate") or order_data.get("orderDate"),
+            "delivery_address": order_data.get("deliveryAddress", "Address from Wix"),
+            "total_price": float(order_data.get("total", 0)),
+            "status": "pending",
+            "notes": order_data.get("notes", f"Order from Wix - Email: {order_data.get('customerEmail', 'N/A')}"),
+            "cost": 0.0,  # Will be calculated
+            "profit": 0.0,  # Will be calculated
+            "profit_margin": 0.0,  # Will be calculated
+            "tracking_number": None
+        }
+
+        # Calculate profit for the order
+        from backend.services.order_service import calculate_order_profit
+        profit_data = await calculate_order_profit(new_order, db)
+        new_order["cost"] = profit_data["cost"]
+        new_order["profit"] = profit_data["profit"]
+        new_order["profit_margin"] = profit_data["profit_margin"]
+
+        # Insert into database
+        from datetime import datetime
+        new_order["created_at"] = datetime.utcnow()
+
+        result = await db.orders.insert_one(new_order)
+
+        # Get the created order
+        created_order = await db.orders.find_one({"_id": result.inserted_id})
+        created_order["_id"] = str(created_order["_id"])
+        created_order["id"] = created_order["_id"]
+
+        return {
+            "success": True,
+            "message": "Order received from Wix successfully",
+            "backend_order_id": created_order["id"],
+            "backend_order_number": order_number,
+            "order": created_order
+        }
+
+    except Exception as e:
+        print(f"❌ Error receiving Wix order: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to process Wix order: {str(e)}")
+
+
 @router.post("/", response_model=dict, status_code=201)
 async def create_order(order: OrderCreate):
     """Create a new order with auto-generated order number, calculate profit, and deduct stock if completed"""
