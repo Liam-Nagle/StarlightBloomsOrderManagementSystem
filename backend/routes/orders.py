@@ -1,5 +1,5 @@
 """Orders API routes"""
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Body
 from typing import List, Optional
 from bson import ObjectId
 from datetime import date
@@ -20,6 +20,7 @@ from backend.services.order_service import (
     get_pending_orders
 )
 from backend.services.order_number_generator import generate_order_number
+from backend.wix_integration import notify_wix_dispatch, notify_wix_cancellation
 
 router = APIRouter()
 
@@ -201,20 +202,73 @@ async def update_order(order_id: str, order_update: OrderUpdate):
     return response
 
 
-@router.put("/{order_id}/status", response_model=dict)
-async def update_status(order_id: str, status: OrderStatus):
-    """Update order status"""
+@router.patch("/{order_id}/status", response_model=dict)
+async def update_status(
+    order_id: str,
+    status: OrderStatus = Body(..., description="New order status"),
+    tracking_number: Optional[str] = Body(None, description="Tracking number for dispatched orders"),
+    cancellation_reason: Optional[str] = Body(None, description="Reason for cancellation")
+):
+    """Update order status and notify Wix if applicable"""
     db = get_database()
 
-    result = await update_order_status(order_id, status, db)
+    # Get current order
+    try:
+        order = await db.orders.find_one({"_id": ObjectId(order_id)})
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid order ID")
 
-    if result.get("error"):
-        raise HTTPException(status_code=400, detail=result["error"])
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
 
-    return {
+    # Prepare update data
+    update_data = {"status": status.value if isinstance(status, OrderStatus) else status}
+    if tracking_number:
+        update_data["tracking_number"] = tracking_number
+
+    # Update status in database
+    try:
+        await db.orders.update_one(
+            {"_id": ObjectId(order_id)},
+            {"$set": update_data}
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to update order: {str(e)}")
+
+    # Notify Wix if order came from Wix
+    wix_result = None
+    wix_notified = False
+
+    if order.get("wix_order_number"):
+        if status == OrderStatus.DISPATCHED or (isinstance(status, str) and status == "dispatched"):
+            wix_result = await notify_wix_dispatch(
+                order["wix_order_number"],
+                tracking_number
+            )
+            wix_notified = wix_result.get("success", False)
+
+        elif status == OrderStatus.CANCELLED or (isinstance(status, str) and status == "cancelled"):
+            wix_result = await notify_wix_cancellation(
+                order["wix_order_number"],
+                cancellation_reason
+            )
+            wix_notified = wix_result.get("success", False)
+
+    # Get updated order
+    updated_order = await db.orders.find_one({"_id": ObjectId(order_id)})
+    updated_order["_id"] = str(updated_order["_id"])
+    updated_order["id"] = updated_order["_id"]
+
+    response = {
         "message": "Order status updated successfully",
-        "order": result["order"]
+        "order": updated_order,
+        "wix_notified": wix_notified
     }
+
+    if wix_result and not wix_notified:
+        response["wix_error"] = wix_result.get("error")
+
+    return response
 
 
 @router.delete("/{order_id}", response_model=dict)
