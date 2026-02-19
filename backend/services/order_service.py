@@ -4,6 +4,8 @@ from bson import ObjectId
 from datetime import datetime, date
 from typing import List, Dict, Optional
 import logging
+from bson.errors import InvalidId
+import re
 
 
 async def create_order_with_validation(
@@ -249,12 +251,15 @@ async def _get_bouquet_cost(
     quantity: int,
     db
 ) -> float:
+    escaped_name = re.escape(bouquet_type)
+
     bouquet = await db.bouquets.find_one({
-        "name": {"$regex": f"^{bouquet_type}$", "$options": "i"},
+        "name": {"$regex": f"^{escaped_name}$", "$options": "i"},
         "size": size.lower()
     })
 
     if not bouquet:
+        logging.warning(f"Bouquet not found: {bouquet_type} ({size})")
         return 0.0
 
     item_cost = 0.0
@@ -262,27 +267,24 @@ async def _get_bouquet_cost(
     for material_item in bouquet.get("materials", []):
         material_id = material_item.get("material_id")
 
-        # 🔒 HARD GUARD
         if not material_id:
-            logging.warning(f"Invalid material_id in bouquet {bouquet_type}: {material_id}")
             continue
 
         try:
-            material_object_id = (
-                material_id
-                if isinstance(material_id, ObjectId)
-                else ObjectId(material_id)
-            )
+            material_oid = material_id if isinstance(material_id, ObjectId) else ObjectId(material_id)
         except (InvalidId, TypeError):
-            continue  # Skip invalid material refs safely
+            logging.warning(f"Invalid material_id: {material_id}")
+            continue
 
-        material = await db.materials.find_one({"_id": material_object_id})
+        material = await db.materials.find_one({"_id": material_oid})
 
-        if material:
-            item_cost += (
-                float(material.get("cost_per_unit", 0))
-                * float(material_item.get("quantity", 0))
-            )
+        if not material:
+            continue
+
+        item_cost += (
+            float(material.get("cost_per_unit", 0))
+            * float(material_item.get("quantity", 0))
+        )
 
     return round(item_cost * quantity, 2)
 
