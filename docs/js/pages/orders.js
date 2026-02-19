@@ -228,8 +228,7 @@ async function handleFormSubmit(e) {
         total_price: parseFloat(document.getElementById('totalPrice').value),
         status: document.getElementById('status').value,
         delivery_type: document.getElementById('deliveryType').value,
-        notes: document.getElementById('notes').value.trim() || null,
-        tracking_number: document.getElementByID('tracking_number').value
+        notes: document.getElementById('notes').value.trim() || null
     };
 
     try {
