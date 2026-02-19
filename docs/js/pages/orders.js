@@ -220,14 +220,23 @@ async function handleFormSubmit(e) {
         return;
     }
 
+    const status = document.getElementById('status').value;
+    const trackingNumber = document.getElementById('trackingNumber').value.trim();
+
+    if (status === 'dispatched' && !trackingNumber) {
+        showToast('Tracking number is required when dispatching an order', 'error');
+        return;
+    }
+
     const formData = {
         customer_name: document.getElementById('customerName').value.trim(),
         items,
         date: document.getElementById('date').value,
         delivery_address: document.getElementById('deliveryAddress').value.trim(),
         total_price: parseFloat(document.getElementById('totalPrice').value),
-        status: document.getElementById('status').value,
+        status,
         delivery_type: document.getElementById('deliveryType').value,
+        tracking_number: trackingNumber || null,
         notes: document.getElementById('notes').value.trim() || null
     };
 
@@ -274,6 +283,7 @@ function viewOrder(id) {
         `Cost: ${formatCurrency(cost)}`,
         `Profit: ${formatCurrency(profit)} (${profitMargin.toFixed(1)}%)`,
         `Status: ${order.status}`,
+        order.tracking_number ? `Tracking Number: ${order.tracking_number}` : '',
         order.notes ? `Notes: ${order.notes}` : ''
     ].filter(Boolean).join('\n'));
 }
@@ -293,6 +303,7 @@ async function editOrder(id) {
     document.getElementById('totalPrice').value = order.total_price;
     document.getElementById('status').value = order.status;
     document.getElementById('deliveryType').value = order.delivery_type || 'standard';
+    document.getElementById('trackingNumber').value = order.tracking_number || '';
     document.getElementById('notes').value = order.notes || '';
 
     // Populate item rows
