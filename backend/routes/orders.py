@@ -3,6 +3,7 @@ from fastapi import APIRouter, HTTPException, Query, Body, Header
 from typing import List, Optional
 from bson import ObjectId
 from datetime import date
+import os
 
 from backend.models.order import (
     OrderCreate,
@@ -23,6 +24,7 @@ from backend.services.order_number_generator import generate_order_number
 from backend.wix_integration import notify_wix_dispatch, notify_wix_cancellation
 
 router = APIRouter()
+WIX_API_KEY = os.environ.get('WIX_API_KEY')
 
 
 @router.post("/", response_model=dict, status_code=201)
@@ -30,7 +32,6 @@ async def create_order(
     order: OrderCreate,
     authorization: Optional[str] = Header(None)
 ):
-    WIX_API_KEY = os.environ.get('WIX_API_KEY')
     # If an auth header is provided (e.g. from Wix), validate it
     if authorization and authorization != f"Bearer {WIX_API_KEY}":
         raise HTTPException(status_code=401, detail="Unauthorized")
