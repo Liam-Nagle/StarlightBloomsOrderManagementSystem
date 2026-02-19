@@ -41,54 +41,6 @@ async def create_order(
     order_number = await generate_order_number(db)
 
     # Create order
-    order_dict = order.model_dump()
-
-    # Calculate profit for the order
-    from backend.services.order_service import calculate_order_profit, deduct_stock_for_order
-    profit_data = await calculate_order_profit(order_dict, db)
-    order_dict["cost"] = profit_data["cost"]
-    order_dict["profit"] = profit_data["profit"]
-    order_dict["profit_margin"] = profit_data["profit_margin"]
-
-    result = await create_order_with_validation(order_dict, order_number, db)
-
-    if result.get("error"):
-        raise HTTPException(status_code=400, detail=result["error"])
-
-    result["order"]["_id"] = str(result["order"]["_id"])
-    result["order"]["id"] = result["order"]["_id"]  # Add id field for frontend compatibility
-
-    # If order is created as completed, deduct stock
-    stock_deduction_result = None
-    if order_dict.get("status") == "complete":
-        stock_deduction_result = await deduct_stock_for_order(result["order"], db)
-
-    response = {
-        "message": "Order created successfully",
-        "order": result["order"]
-    }
-
-    if stock_deduction_result:
-        response["stock_deduction"] = stock_deduction_result
-
-    return response
-
-@router.post("/from-wix", response_model=dict, status_code=201)
-async def create_order(
-    order: OrderCreate,
-    authorization: Optional[str] = Header(None)
-):
-    WIX_API_KEY = os.getenv("WIX_API_KEY")  # Get from environment
-
-    # If an auth header is provided (e.g. from Wix), validate it
-    if authorization and authorization != f"Bearer {WIX_API_KEY}":
-        raise HTTPException(status_code=401, detail="Unauthorized")
-    db = get_database()
-
-    # Generate order number
-    order_number = await generate_order_number(db)
-
-    # Create order
     order_dict = order.model_dump(mode="json")
 
     # Calculate profit for the order
@@ -108,7 +60,7 @@ async def create_order(
 
     # If order is created as completed, deduct stock
     stock_deduction_result = None
-    if order_dict.get("status") == "completed":
+    if order_dict.get("status") == "complete":
         stock_deduction_result = await deduct_stock_for_order(result["order"], db)
 
     response = {
