@@ -3,6 +3,7 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 from bson import ObjectId
 from datetime import datetime, date
 from typing import List, Dict, Optional
+import logging
 
 
 async def create_order_with_validation(
@@ -242,8 +243,12 @@ async def calculate_order_total(
     return round(price * quantity, 2)
 
 
-async def _get_bouquet_cost(bouquet_type: str, size: str, quantity: int, db) -> float:
-    """Helper to calculate material cost for a single bouquet line item"""
+async def _get_bouquet_cost(
+    bouquet_type: str,
+    size: str,
+    quantity: int,
+    db
+) -> float:
     bouquet = await db.bouquets.find_one({
         "name": {"$regex": f"^{bouquet_type}$", "$options": "i"},
         "size": size.lower()
@@ -253,12 +258,33 @@ async def _get_bouquet_cost(bouquet_type: str, size: str, quantity: int, db) -> 
         return 0.0
 
     item_cost = 0.0
-    for material_item in bouquet.get("materials", []):
-        material = await db.materials.find_one({"_id": ObjectId(material_item.get("material_id"))})
-        if material:
-            item_cost += material.get("cost_per_unit", 0) * material_item.get("quantity", 0)
 
-    return item_cost * quantity
+    for material_item in bouquet.get("materials", []):
+        material_id = material_item.get("material_id")
+
+        # 🔒 HARD GUARD
+        if not material_id:
+            logging.warning(f"Invalid material_id in bouquet {bouquet_type}: {material_id}")
+            continue
+
+        try:
+            material_object_id = (
+                material_id
+                if isinstance(material_id, ObjectId)
+                else ObjectId(material_id)
+            )
+        except (InvalidId, TypeError):
+            continue  # Skip invalid material refs safely
+
+        material = await db.materials.find_one({"_id": material_object_id})
+
+        if material:
+            item_cost += (
+                float(material.get("cost_per_unit", 0))
+                * float(material_item.get("quantity", 0))
+            )
+
+    return round(item_cost * quantity, 2)
 
 
 async def calculate_order_profit(
