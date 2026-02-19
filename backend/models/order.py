@@ -1,6 +1,6 @@
 """Order model for customer orders"""
 from pydantic import BaseModel, Field
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime
 from datetime import date as DateType
 from enum import Enum
@@ -14,11 +14,17 @@ class OrderStatus(str, Enum):
     CANCELLED = "cancelled"
 
 
+class OrderItem(BaseModel):
+    """A single bouquet line item within an order"""
+    bouquet_type: str = Field(..., min_length=1, max_length=200, description="Bouquet type/name")
+    size: str = Field(..., description="Bouquet size (small/medium/large)")
+    quantity: int = Field(1, ge=1, description="Number of this bouquet")
+
+
 class OrderBase(BaseModel):
     """Base order fields"""
     customer_name: str = Field(..., min_length=1, max_length=200, description="Customer name")
-    bouquet_type: str = Field(..., min_length=1, max_length=200, description="Bouquet type/name")
-    size: str = Field(..., description="Bouquet size (small/medium/large)")
+    items: List[OrderItem] = Field(..., min_length=1, description="List of bouquet items in this order")
     date: DateType = Field(..., description="Order/delivery date")
     delivery_address: str = Field(..., min_length=1, max_length=500, description="Delivery address")
     total_price: float = Field(..., ge=0, description="Total order price")
@@ -39,8 +45,7 @@ class OrderCreate(OrderBase):
 class OrderUpdate(BaseModel):
     """Schema for updating an order (all fields optional)"""
     customer_name: Optional[str] = Field(None, min_length=1, max_length=200)
-    bouquet_type: Optional[str] = Field(None, min_length=1, max_length=200)
-    size: Optional[str] = None
+    items: Optional[List[OrderItem]] = None
     date: Optional[DateType] = None
     delivery_address: Optional[str] = Field(None, min_length=1, max_length=500)
     total_price: Optional[float] = Field(None, ge=0)

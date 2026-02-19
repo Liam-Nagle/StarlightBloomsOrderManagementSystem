@@ -1,12 +1,13 @@
 /**
  * Orders Page Logic
- * Handles order CRUD operations, filtering, and bouquet selection
+ * Handles order CRUD operations with multi-item bouquet support
  */
 
 let orders = [];
 let bouquets = [];
 let currentOrderId = null;
 let modal = null;
+let orderItemCounter = 0;
 
 // Initialize page
 document.addEventListener('DOMContentLoaded', async () => {
@@ -16,7 +17,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     setupEventListeners();
 });
 
-// Load all bouquets for dropdown
 async function loadBouquets() {
     try {
         bouquets = await API.bouquets.getAll();
@@ -25,14 +25,12 @@ async function loadBouquets() {
     }
 }
 
-// Load orders from API
 async function loadOrders() {
     try {
         const status = document.getElementById('statusFilter')?.value || null;
         const startDate = document.getElementById('startDate')?.value || null;
         const endDate = document.getElementById('endDate')?.value || null;
 
-        // API expects a filters object
         const filters = {};
         if (status) filters.status = status;
         if (startDate) filters.start_date = startDate;
@@ -51,14 +49,19 @@ function renderOrdersTable() {
     const emptyState = document.getElementById('emptyState');
     const searchQuery = document.getElementById('searchInput')?.value.toLowerCase() || '';
 
-    // Filter orders by search query
     let filteredOrders = orders;
     if (searchQuery) {
-        filteredOrders = orders.filter(order =>
-            order.customer_name.toLowerCase().includes(searchQuery) ||
-            order.order_number.toLowerCase().includes(searchQuery) ||
-            order.bouquet_type.toLowerCase().includes(searchQuery)
-        );
+        filteredOrders = orders.filter(order => {
+            const itemsText = (order.items || [])
+                .map(i => `${i.bouquet_type} ${i.size}`)
+                .join(' ')
+                .toLowerCase();
+            return (
+                order.customer_name.toLowerCase().includes(searchQuery) ||
+                order.order_number.toLowerCase().includes(searchQuery) ||
+                itemsText.includes(searchQuery)
+            );
+        });
     }
 
     if (filteredOrders.length === 0) {
@@ -69,20 +72,22 @@ function renderOrdersTable() {
 
     emptyState.style.display = 'none';
     tbody.innerHTML = filteredOrders.map(order => {
-        const cost = order.cost !== null && order.cost !== undefined ? order.cost : 0;
-        const profit = order.profit !== null && order.profit !== undefined ? order.profit : 0;
-        const profitMargin = order.profit_margin !== null && order.profit_margin !== undefined ? order.profit_margin : 0;
+        const cost = order.cost ?? 0;
+        const profit = order.profit ?? 0;
+        const profitMargin = order.profit_margin ?? 0;
         const profitColor = profit >= 0 ? 'var(--success-color)' : 'var(--danger-color)';
-
-        // Use _id as fallback if id is not present
         const orderId = order.id || order._id;
+
+        // Summarise items for table cell
+        const itemsSummary = (order.items || [])
+            .map(i => `${i.bouquet_type} (${i.size.charAt(0).toUpperCase() + i.size.slice(1)})${i.quantity > 1 ? ` x${i.quantity}` : ''}`)
+            .join('<br>');
 
         return `
         <tr>
             <td><strong>${order.order_number}</strong></td>
             <td>${order.customer_name}</td>
-            <td>${order.bouquet_type}</td>
-            <td>${order.size.charAt(0).toUpperCase() + order.size.slice(1)}</td>
+            <td style="font-size:0.8rem;">${itemsSummary || '—'}</td>
             <td>${formatDate(order.date)}</td>
             <td>${formatCurrency(order.total_price)}</td>
             <td>${formatCurrency(cost)}</td>
@@ -96,8 +101,7 @@ function renderOrdersTable() {
                     <button class="action-btn action-btn-delete" onclick="deleteOrder('${orderId}', '${order.order_number}')">Delete</button>
                 </div>
             </td>
-        </tr>
-        `;
+        </tr>`;
     }).join('');
 }
 
@@ -105,61 +109,120 @@ function renderOrdersTable() {
 function setupEventListeners() {
     document.getElementById('addOrderBtn')?.addEventListener('click', () => {
         currentOrderId = null;
+        orderItemCounter = 0;
         modal.setTitle('Create New Order');
         modal.resetForm();
-        populateBouquetDropdown();
+        document.getElementById('orderItemsContainer').innerHTML = '';
+        addOrderItemRow();
         modal.open();
     });
 
-    document.getElementById('cancelBtn')?.addEventListener('click', () => {
-        modal.close();
-    });
-
+    document.getElementById('cancelBtn')?.addEventListener('click', () => modal.close());
+    document.getElementById('addItemBtn')?.addEventListener('click', addOrderItemRow);
     document.getElementById('orderForm')?.addEventListener('submit', handleFormSubmit);
-
     document.getElementById('searchInput')?.addEventListener('input', renderOrdersTable);
     document.getElementById('statusFilter')?.addEventListener('change', loadOrders);
     document.getElementById('startDate')?.addEventListener('change', loadOrders);
     document.getElementById('endDate')?.addEventListener('change', loadOrders);
-
-    document.getElementById('bouquetSelect')?.addEventListener('change', handleBouquetSelection);
 }
 
-// Populate bouquet dropdown
-function populateBouquetDropdown() {
-    const select = document.getElementById('bouquetSelect');
-    if (!select) return;
+// Add a bouquet item row to the order form
+function addOrderItemRow(itemData = null) {
+    const container = document.getElementById('orderItemsContainer');
+    const rowId = `order-item-${orderItemCounter++}`;
 
-    select.innerHTML = '<option value="">Select bouquet</option>' +
-        bouquets.map(b => `
-            <option value="${b.id}" data-size="${b.size}" data-price="${b.sell_price}">
-                ${b.name} - ${b.size.charAt(0).toUpperCase() + b.size.slice(1)} (${formatCurrency(b.sell_price)})
-            </option>
-        `).join('');
+    const row = document.createElement('div');
+    row.id = rowId;
+    row.style.cssText = 'display: flex; gap: var(--spacing-md); align-items: end; margin-bottom: var(--spacing-sm);';
+
+    row.innerHTML = `
+        <div class="form-group" style="flex: 2;">
+            <label>Bouquet</label>
+            <select class="item-bouquet-select" required>
+                <option value="">Select bouquet</option>
+                ${bouquets.map(b => `
+                    <option value="${b.id}"
+                        data-name="${b.name}"
+                        data-size="${b.size}"
+                        data-price="${b.sell_price}"
+                        ${itemData && b.name === itemData.bouquet_type && b.size === itemData.size ? 'selected' : ''}>
+                        ${b.name} - ${b.size.charAt(0).toUpperCase() + b.size.slice(1)} (${formatCurrency(b.sell_price)})
+                    </option>
+                `).join('')}
+            </select>
+        </div>
+        <div class="form-group" style="flex: 0 0 80px;">
+            <label>Qty</label>
+            <input type="number" class="item-quantity" min="1" value="${itemData?.quantity || 1}" required>
+        </div>
+        <button type="button" class="btn btn-danger" onclick="removeOrderItemRow('${rowId}')" style="height: 38px;">✕</button>
+    `;
+
+    container.appendChild(row);
+
+    // Auto-update total price when bouquet or quantity changes
+    row.querySelector('.item-bouquet-select').addEventListener('change', recalculateTotalPrice);
+    row.querySelector('.item-quantity').addEventListener('input', recalculateTotalPrice);
 }
 
-// Handle bouquet selection - auto-fill size and price
-function handleBouquetSelection(e) {
-    const selectedOption = e.target.options[e.target.selectedIndex];
-    const size = selectedOption.dataset.size;
-    const price = selectedOption.dataset.price;
-    const bouquetName = selectedOption.text.split(' - ')[0];
+window.removeOrderItemRow = function(rowId) {
+    document.getElementById(rowId)?.remove();
+    recalculateTotalPrice();
+};
 
-    if (size && price) {
-        document.getElementById('bouquetType').value = bouquetName;
-        document.getElementById('size').value = size;
-        document.getElementById('totalPrice').value = parseFloat(price).toFixed(2);
+// Auto-sum total price from all selected bouquets
+function recalculateTotalPrice() {
+    const rows = document.querySelectorAll('#orderItemsContainer > div');
+    let total = 0;
+
+    rows.forEach(row => {
+        const select = row.querySelector('.item-bouquet-select');
+        const qty = parseInt(row.querySelector('.item-quantity').value) || 1;
+        const selectedOption = select.options[select.selectedIndex];
+        const price = parseFloat(selectedOption?.dataset?.price || 0);
+        total += price * qty;
+    });
+
+    if (total > 0) {
+        document.getElementById('totalPrice').value = total.toFixed(2);
     }
+}
+
+// Get items array from form
+function getItemsFromForm() {
+    const rows = document.querySelectorAll('#orderItemsContainer > div');
+    const items = [];
+
+    rows.forEach(row => {
+        const select = row.querySelector('.item-bouquet-select');
+        const qty = parseInt(row.querySelector('.item-quantity').value) || 1;
+        const selectedOption = select.options[select.selectedIndex];
+
+        if (select.value && selectedOption) {
+            items.push({
+                bouquet_type: selectedOption.dataset.name,
+                size: selectedOption.dataset.size,
+                quantity: qty
+            });
+        }
+    });
+
+    return items;
 }
 
 // Handle form submission
 async function handleFormSubmit(e) {
     e.preventDefault();
 
+    const items = getItemsFromForm();
+    if (items.length === 0) {
+        showToast('Please add at least one bouquet', 'error');
+        return;
+    }
+
     const formData = {
         customer_name: document.getElementById('customerName').value.trim(),
-        bouquet_type: document.getElementById('bouquetType').value.trim(),
-        size: document.getElementById('size').value,
+        items,
         date: document.getElementById('date').value,
         delivery_address: document.getElementById('deliveryAddress').value.trim(),
         total_price: parseFloat(document.getElementById('totalPrice').value),
@@ -188,77 +251,56 @@ function viewOrder(id) {
     const order = orders.find(o => o.id === id || o._id === id);
     if (!order) return;
 
-    const cost = order.cost !== null && order.cost !== undefined ? order.cost : 0;
-    const profit = order.profit !== null && order.profit !== undefined ? order.profit : 0;
-    const profitMargin = order.profit_margin !== null && order.profit_margin !== undefined ? order.profit_margin : 0;
+    const cost = order.cost ?? 0;
+    const profit = order.profit ?? 0;
+    const profitMargin = order.profit_margin ?? 0;
     const profitColor = profit >= 0 ? 'var(--success-color)' : 'var(--danger-color)';
 
-    const details = `
-        <strong>Order Number:</strong> ${order.order_number}<br>
-        <strong>Customer:</strong> ${order.customer_name}<br>
-        <strong>Bouquet:</strong> ${order.bouquet_type} (${order.size})<br>
-        <strong>Date:</strong> ${formatDate(order.date)}<br>
-        <strong>Delivery:</strong> ${order.delivery_address}<br>
-        <strong>Total Price:</strong> ${formatCurrency(order.total_price)}<br>
-        <strong>Material Cost:</strong> ${formatCurrency(cost)}<br>
-        <strong>Profit:</strong> <span style="color: ${profitColor};">${formatCurrency(profit)}</span><br>
-        <strong>Profit Margin:</strong> ${profitMargin.toFixed(1)}%<br>
-        <strong>Status:</strong> ${order.status}<br>
-        ${order.notes ? `<strong>Notes:</strong> ${order.notes}` : ''}
-    `;
+    const itemsList = (order.items || [])
+        .map(i => `• ${i.bouquet_type} (${i.size}) x${i.quantity}`)
+        .join('\n');
 
-    // Simple alert for now (could enhance with a better modal)
-    const div = document.createElement('div');
-    div.innerHTML = details;
-    div.style.cssText = 'padding: 20px; background: white; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);';
-
-    // You could use a better modal system here
-    alert(details.replace(/<br>/g, '\n').replace(/<\/?strong>/g, '').replace(/<span[^>]*>/g, '').replace(/<\/span>/g, ''));
+    alert([
+        `Order: ${order.order_number}`,
+        `Customer: ${order.customer_name}`,
+        `Items:\n${itemsList}`,
+        `Date: ${formatDate(order.date)}`,
+        `Delivery: ${order.delivery_address}`,
+        `Total: ${formatCurrency(order.total_price)}`,
+        `Cost: ${formatCurrency(cost)}`,
+        `Profit: ${formatCurrency(profit)} (${profitMargin.toFixed(1)}%)`,
+        `Status: ${order.status}`,
+        order.notes ? `Notes: ${order.notes}` : ''
+    ].filter(Boolean).join('\n'));
 }
 
 // Edit order
 async function editOrder(id) {
     const order = orders.find(o => o.id === id || o._id === id);
-    if (!order) {
-        showToast('Order not found', 'error');
-        return;
-    }
+    if (!order) { showToast('Order not found', 'error'); return; }
+
     currentOrderId = id;
+    orderItemCounter = 0;
     modal.setTitle('Edit Order');
 
-    // Populate form
     document.getElementById('customerName').value = order.customer_name;
-    document.getElementById('bouquetType').value = order.bouquet_type;
-    document.getElementById('size').value = order.size;
-
-    // Format date properly for input field (YYYY-MM-DD)
-    const orderDate = new Date(order.date);
-    const formattedDate = orderDate.toISOString().split('T')[0];
-    document.getElementById('date').value = formattedDate;
-
+    document.getElementById('date').value = new Date(order.date).toISOString().split('T')[0];
     document.getElementById('deliveryAddress').value = order.delivery_address;
     document.getElementById('totalPrice').value = order.total_price;
     document.getElementById('status').value = order.status;
     document.getElementById('notes').value = order.notes || '';
 
-    // Populate dropdown and try to select matching bouquet
-    populateBouquetDropdown();
-    const bouquetSelect = document.getElementById('bouquetSelect');
-    const matchingBouquet = bouquets.find(b =>
-        b.name === order.bouquet_type && b.size === order.size
-    );
-    if (matchingBouquet) {
-        bouquetSelect.value = matchingBouquet.id;
-    }
+    // Populate item rows
+    const container = document.getElementById('orderItemsContainer');
+    container.innerHTML = '';
+    (order.items || []).forEach(item => addOrderItemRow(item));
 
     modal.open();
 }
 
 // Delete order
 async function deleteOrder(id, orderNumber) {
-    if (!confirm(`Are you sure you want to delete order ${orderNumber}? This action cannot be undone.`)) {
-        return;
-    }
+    if (!confirm(`Are you sure you want to delete order ${orderNumber}?`)) return;
 
     try {
         await API.orders.delete(id);
@@ -269,7 +311,6 @@ async function deleteOrder(id, orderNumber) {
     }
 }
 
-// Make functions globally accessible for onclick handlers
 window.viewOrder = viewOrder;
 window.editOrder = editOrder;
 window.deleteOrder = deleteOrder;

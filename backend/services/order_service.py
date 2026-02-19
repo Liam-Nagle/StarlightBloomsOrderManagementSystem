@@ -242,50 +242,51 @@ async def calculate_order_total(
     return round(price * quantity, 2)
 
 
+async def _get_bouquet_cost(bouquet_type: str, size: str, quantity: int, db) -> float:
+    """Helper to calculate material cost for a single bouquet line item"""
+    bouquet = await db.bouquets.find_one({
+        "name": {"$regex": f"^{bouquet_type}$", "$options": "i"},
+        "size": size.lower()
+    })
+
+    if not bouquet:
+        return 0.0
+
+    item_cost = 0.0
+    for material_item in bouquet.get("materials", []):
+        material = await db.materials.find_one({"_id": ObjectId(material_item.get("material_id"))})
+        if material:
+            item_cost += material.get("cost_per_unit", 0) * material_item.get("quantity", 0)
+
+    return item_cost * quantity
+
+
 async def calculate_order_profit(
     order: Dict,
     db: AsyncIOMotorDatabase
 ) -> Dict:
     """
-    Calculate profit for an order based on bouquet material costs
-
-    Args:
-        order: Order document
-        db: MongoDB database instance
-
-    Returns:
-        Dict with cost, profit, and profit_margin
+    Calculate profit for an order based on bouquet material costs.
+    Supports both single-bouquet (legacy) and multi-item orders.
     """
-    bouquet_type = order.get("bouquet_type")
-    size = order.get("size")
     total_price = order.get("total_price", 0)
+    total_cost = 0.0
 
-    # Find the bouquet by name and size
-    bouquet = await db.bouquets.find_one({
-        "name": {"$regex": f"^{bouquet_type}$", "$options": "i"},
-        "size": size
-    })
+    order_items = order.get("items", [])
 
-    if not bouquet:
-        return {
-            "cost": 0,
-            "profit": total_price,
-            "profit_margin": 100 if total_price > 0 else 0
-        }
+    for item in order_items:
+        # Handle both dict (from DB) and object (from Pydantic)
+        if isinstance(item, dict):
+            bouquet_type = item.get("bouquet_type")
+            size = item.get("size", "medium")
+            quantity = item.get("quantity", 1)
+        else:
+            bouquet_type = item.bouquet_type
+            size = item.size
+            quantity = item.quantity
 
-    # Calculate total material cost for this order
-    total_cost = 0
-    for material_item in bouquet.get("materials", []):
-        material_id = material_item.get("material_id")
-        quantity_needed = material_item.get("quantity", 0)
+        total_cost += await _get_bouquet_cost(bouquet_type, size, quantity, db)
 
-        # Get current material cost
-        material = await db.materials.find_one({"_id": ObjectId(material_id)})
-        if material:
-            cost_per_unit = material.get("cost_per_unit", 0)
-            total_cost += cost_per_unit * quantity_needed
-
-    # Calculate profit
     profit = total_price - total_cost
     profit_margin = (profit / total_price * 100) if total_price > 0 else 0
 
@@ -301,63 +302,60 @@ async def deduct_stock_for_order(
     db: AsyncIOMotorDatabase
 ) -> Dict:
     """
-    Deduct material stock when an order is completed
-
-    Args:
-        order: Order document
-        db: MongoDB database instance
-
-    Returns:
-        Dict with success status and messages
+    Deduct material stock when an order is completed.
+    Supports both single-bouquet (legacy) and multi-item orders.
     """
-    bouquet_type = order.get("bouquet_type")
-    size = order.get("size")
-
-    # Find the bouquet by name and size
-    bouquet = await db.bouquets.find_one({
-        "name": {"$regex": f"^{bouquet_type}$", "$options": "i"},
-        "size": size
-    })
-
-    if not bouquet:
-        return {
-            "success": False,
-            "message": f"Bouquet not found: {bouquet_type} ({size})"
-        }
-
-    # Deduct stock for each material
     deducted_materials = []
     warnings = []
 
-    for material_item in bouquet.get("materials", []):
-        material_id = material_item.get("material_id")
-        quantity_needed = material_item.get("quantity", 0)
+    order_items = order.get("items", [])
 
-        # Update material stock
-        material = await db.materials.find_one({"_id": ObjectId(material_id)})
+    for item in order_items:
+        if isinstance(item, dict):
+            bouquet_type = item.get("bouquet_type")
+            size = item.get("size", "medium")
+            quantity = item.get("quantity", 1)
+        else:
+            bouquet_type = item.bouquet_type
+            size = item.size
+            quantity = item.quantity
 
-        if not material:
-            warnings.append(f"Material {material_item.get('name')} not found")
-            continue
-
-        current_stock = material.get("current_stock", 0)
-        new_stock = max(0, current_stock - quantity_needed)
-
-        await db.materials.update_one(
-            {"_id": ObjectId(material_id)},
-            {"$set": {"current_stock": new_stock}}
-        )
-
-        deducted_materials.append({
-            "name": material["name"],
-            "deducted": quantity_needed,
-            "new_stock": new_stock
+        bouquet = await db.bouquets.find_one({
+            "name": {"$regex": f"^{bouquet_type}$", "$options": "i"},
+            "size": size.lower()
         })
 
-        if new_stock == 0:
-            warnings.append(f"{material['name']} is now out of stock")
-        elif new_stock < 10:
-            warnings.append(f"{material['name']} is low on stock ({new_stock} remaining)")
+        if not bouquet:
+            warnings.append(f"Bouquet not found: {bouquet_type} ({size})")
+            continue
+
+        for material_item in bouquet.get("materials", []):
+            material_id = material_item.get("material_id")
+            quantity_needed = material_item.get("quantity", 0) * quantity
+
+            material = await db.materials.find_one({"_id": ObjectId(material_id)})
+            if not material:
+                warnings.append(f"Material {material_item.get('name')} not found")
+                continue
+
+            current_stock = material.get("current_stock", 0)
+            new_stock = max(0, current_stock - quantity_needed)
+
+            await db.materials.update_one(
+                {"_id": ObjectId(material_id)},
+                {"$set": {"current_stock": new_stock}}
+            )
+
+            deducted_materials.append({
+                "name": material["name"],
+                "deducted": quantity_needed,
+                "new_stock": new_stock
+            })
+
+            if new_stock == 0:
+                warnings.append(f"{material['name']} is now out of stock")
+            elif new_stock < material.get("low_stock_threshold", 10):
+                warnings.append(f"{material['name']} is low on stock ({new_stock} remaining)")
 
     return {
         "success": True,
