@@ -1,5 +1,5 @@
 """Orders API routes"""
-from fastapi import APIRouter, HTTPException, Query, Body
+from fastapi import APIRouter, HTTPException, Query, Body, Header
 from typing import List, Optional
 from bson import ObjectId
 from datetime import date
@@ -20,14 +20,22 @@ from backend.services.order_service import (
     get_pending_orders
 )
 from backend.services.order_number_generator import generate_order_number
-from backend.wix_integration import notify_wix_dispatch, notify_wix_cancellation
+from backend.wix_integration import notify_wix_dispatch, notify_wix_cancellation, WIX_API_KEY
 
 router = APIRouter()
 
 
 @router.post("/from-wix", response_model=dict, status_code=201)
-async def receive_wix_order(order_data: dict = Body(...)):
+async def receive_wix_order(
+    order_data: dict = Body(...),
+    authorization: Optional[str] = Header(None)
+):
     """Receive order from Wix and store in backend"""
+
+    # Validate API key
+    if not authorization or authorization != f"Bearer {WIX_API_KEY}":
+        raise HTTPException(status_code=401, detail="Unauthorized")
+
     db = get_database()
 
     try:
