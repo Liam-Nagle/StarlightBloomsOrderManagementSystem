@@ -30,8 +30,6 @@ async def create_order(
     order: OrderCreate,
     authorization: Optional[str] = Header(None)
 ):
-    WIX_API_KEY = os.getenv("WIX_API_KEY")  # Get from environment
-
     # If an auth header is provided (e.g. from Wix), validate it
     if authorization and authorization != f"Bearer {WIX_API_KEY}":
         raise HTTPException(status_code=401, detail="Unauthorized")
