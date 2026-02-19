@@ -123,9 +123,17 @@
                         <input type="number" id="totalPrice" name="totalPrice" step="0.01" min="0" required>
                     </div>
                     <div class="form-group">
-                        <label for="notes">Notes</label>
-                        <textarea id="notes" name="notes" rows="1"></textarea>
+                        <label for="deliveryType">Delivery Type *</label>
+                        <select id="deliveryType" name="deliveryType" required>
+                            <option value="standard">Standard Delivery</option>
+                            <option value="next_day">Next Day Delivery</option>
+                        </select>
                     </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="notes">Notes</label>
+                    <textarea id="notes" name="notes" rows="3"></textarea>
                 </div>
 
                 <div class="form-actions">

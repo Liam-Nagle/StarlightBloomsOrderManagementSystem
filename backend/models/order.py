@@ -35,6 +35,7 @@ class OrderBase(BaseModel):
     profit_margin: Optional[float] = Field(None, description="Profit margin percentage")
     wix_order_number: Optional[str] = Field(None, max_length=50, description="Wix order number (e.g., ORD-xxxxx)")
     tracking_number: Optional[str] = Field(None, max_length=100, description="Delivery tracking number")
+    delivery_type: Optional[str] = Field("standard", description="Delivery type (standard / next_day)")
 
 
 class OrderCreate(OrderBase):
@@ -53,6 +54,7 @@ class OrderUpdate(BaseModel):
     notes: Optional[str] = Field(None, max_length=1000)
     wix_order_number: Optional[str] = Field(None, max_length=50)
     tracking_number: Optional[str] = Field(None, max_length=100)
+    delivery_type: Optional[str] = Field(None)
 
 
 class OrderInDB(OrderBase):

@@ -227,6 +227,7 @@ async function handleFormSubmit(e) {
         delivery_address: document.getElementById('deliveryAddress').value.trim(),
         total_price: parseFloat(document.getElementById('totalPrice').value),
         status: document.getElementById('status').value,
+        delivery_type: document.getElementById('deliveryType').value,
         notes: document.getElementById('notes').value.trim() || null
     };
 
@@ -260,12 +261,15 @@ function viewOrder(id) {
         .map(i => `• ${i.bouquet_type} (${i.size}) x${i.quantity}`)
         .join('\n');
 
+    const deliveryLabel = order.delivery_type === 'next_day' ? 'Next Day Delivery' : 'Standard Delivery';
+
     alert([
         `Order: ${order.order_number}`,
         `Customer: ${order.customer_name}`,
         `Items:\n${itemsList}`,
         `Date: ${formatDate(order.date)}`,
-        `Delivery: ${order.delivery_address}`,
+        `Delivery Type: ${deliveryLabel}`,
+        `Delivery Address: ${order.delivery_address}`,
         `Total: ${formatCurrency(order.total_price)}`,
         `Cost: ${formatCurrency(cost)}`,
         `Profit: ${formatCurrency(profit)} (${profitMargin.toFixed(1)}%)`,
@@ -288,6 +292,7 @@ async function editOrder(id) {
     document.getElementById('deliveryAddress').value = order.delivery_address;
     document.getElementById('totalPrice').value = order.total_price;
     document.getElementById('status').value = order.status;
+    document.getElementById('deliveryType').value = order.delivery_type || 'standard';
     document.getElementById('notes').value = order.notes || '';
 
     // Populate item rows
