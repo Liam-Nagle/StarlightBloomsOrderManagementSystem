@@ -20,7 +20,7 @@ from backend.services.order_service import (
     get_pending_orders
 )
 from backend.services.order_number_generator import generate_order_number
-from backend.wix_integration import notify_wix_dispatch, notify_wix_cancellation, WIX_API_KEY
+from backend.wix_integration import notify_wix_dispatch, notify_wix_cancellation
 
 router = APIRouter()
 
@@ -30,7 +30,7 @@ async def create_order(
     order: OrderCreate,
     authorization: Optional[str] = Header(None)
 ):
-    """Create a new order with auto-generated order number, calculate profit, and deduct stock if completed"""
+    WIX_API_KEY = os.getenv("WIX_API_KEY")  # Get from environment
 
     # If an auth header is provided (e.g. from Wix), validate it
     if authorization and authorization != f"Bearer {WIX_API_KEY}":

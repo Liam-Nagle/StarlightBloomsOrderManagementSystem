@@ -1,8 +1,6 @@
 import httpx
 from typing import Optional
 
-WIX_API_KEY = "YOUR_SECURE_API_KEY_HERE"
-WIX_BASE_URL = "https://starlightblooms.wixsite.com/starlight-blooms-by/_functions"
 
 async def notify_wix_dispatch(wix_order_number: str, tracking_number: Optional[str] = None):
     """Notify Wix that order has been dispatched"""
