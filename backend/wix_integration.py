@@ -1,6 +1,8 @@
 import httpx
 from typing import Optional
+import os
 
+WIX_BASE_URL = os.environ.get('WIX_BASE_URL')
 
 async def notify_wix_dispatch(wix_order_number: str, tracking_number: Optional[str] = None):
     """Notify Wix that order has been dispatched"""
