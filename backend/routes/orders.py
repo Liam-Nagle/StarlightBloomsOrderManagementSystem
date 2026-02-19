@@ -60,7 +60,7 @@ async def create_order(
 
     # If order is created as completed, deduct stock
     stock_deduction_result = None
-    if order_dict.get("status") == "completed":
+    if order_dict.get("status") == "complete":
         stock_deduction_result = await deduct_stock_for_order(result["order"], db)
 
     response = {
@@ -89,7 +89,7 @@ async def create_order(
     order_number = await generate_order_number(db)
 
     # Create order
-    order_dict = order.model_dump()
+    order_dict = order.model_dump(mode="json")
 
     # Calculate profit for the order
     from backend.services.order_service import calculate_order_profit, deduct_stock_for_order
