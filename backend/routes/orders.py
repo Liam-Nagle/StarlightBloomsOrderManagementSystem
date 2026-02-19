@@ -4,6 +4,7 @@ from typing import List, Optional
 from bson import ObjectId
 from datetime import date
 import os
+from backend.services.order_status_service import handle_wix_status_change
 
 from backend.models.order import (
     OrderCreate,
@@ -176,15 +177,30 @@ async def update_order(order_id: str, order_update: OrderUpdate):
         update_data["profit"] = profit_data["profit"]
         update_data["profit_margin"] = profit_data["profit_margin"]
 
-    # Check if status is changing to completed
+    # Check status change
     old_status = current_order.get("status")
     new_status = update_data.get("status")
+
     stock_deduction_result = None
+    wix_notified = False
+    wix_result = None
 
     if new_status == "completed" and old_status != "completed":
         # Deduct stock for the order
         from backend.services.order_service import deduct_stock_for_order
         stock_deduction_result = await deduct_stock_for_order(current_order, db)
+
+    # Handle Wix status change (dispatched / cancelled)
+    if new_status and new_status != old_status:
+        from backend.services.order_status_service import handle_wix_status_change
+
+        wix_notified, wix_result = await handle_wix_status_change(
+            order=current_order,
+            old_status=old_status,
+            new_status=new_status,
+            tracking_number=update_data.get("tracking_number"),
+            cancellation_reason=update_data.get("cancellation_reason"),
+        )
 
     try:
         result = await db.orders.update_one(
@@ -200,8 +216,12 @@ async def update_order(order_id: str, order_update: OrderUpdate):
 
     response = {
         "message": "Order updated successfully",
-        "order": updated_order
+        "order": updated_order,
+        "wix_notified": wix_notified,
     }
+
+    if wix_result and not wix_notified:
+        response["wix_error"] = wix_result.get("error")
 
     if stock_deduction_result:
         response["stock_deduction"] = stock_deduction_result
@@ -242,24 +262,13 @@ async def update_status(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to update order: {str(e)}")
 
-    # Notify Wix if order came from Wix
-    wix_result = None
-    wix_notified = False
-
-    if order.get("wix_order_number"):
-        if status == OrderStatus.DISPATCHED or (isinstance(status, str) and status == "dispatched"):
-            wix_result = await notify_wix_dispatch(
-                order["wix_order_number"],
-                tracking_number
-            )
-            wix_notified = wix_result.get("success", False)
-
-        elif status == OrderStatus.CANCELLED or (isinstance(status, str) and status == "cancelled"):
-            wix_result = await notify_wix_cancellation(
-                order["wix_order_number"],
-                cancellation_reason
-            )
-            wix_notified = wix_result.get("success", False)
+    wix_notified, wix_result = await handle_wix_status_change(
+        order=order,
+        old_status=order.get("status"),
+        new_status=status,
+        tracking_number=tracking_number,
+        cancellation_reason=cancellation_reason,
+    )
 
     # Get updated order
     updated_order = await db.orders.find_one({"_id": ObjectId(order_id)})
