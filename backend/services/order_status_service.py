@@ -1,8 +1,5 @@
 from typing import Optional, Tuple
-from backend.integrations.wix import (
-    notify_wix_dispatch,
-    notify_wix_cancellation,
-)
+from backend.wix_integration import notify_wix_dispatch, notify_wix_cancellation
 from backend.models.order import OrderStatus
 
 
