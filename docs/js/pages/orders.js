@@ -233,7 +233,7 @@ async function handleFormSubmit(e) {
 
     try {
         if (currentOrderId) {
-            await API.orders.updateStatus(currentOrderId, formData, status);
+            await API.orders.updateStatus(currentOrderId, status);
             showToast('Order updated successfully', 'success');
         } else {
             await API.orders.create(formData);
