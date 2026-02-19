@@ -4,6 +4,7 @@ from typing import Optional
 
 async def notify_wix_dispatch(wix_order_number: str, tracking_number: Optional[str] = None):
     """Notify Wix that order has been dispatched"""
+    WIX_BASE_URL = os.getenv("WIX_BASE_URL")  # Get from environment
     try:
         async with httpx.AsyncClient() as client:
             response = await client.post(
