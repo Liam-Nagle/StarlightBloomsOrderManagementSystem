@@ -14,11 +14,21 @@ class OrderStatus(str, Enum):
     CANCELLED = "cancelled"
 
 
+class ActualMaterial(BaseModel):
+    """A material actually used when fulfilling an order item"""
+    material_id: str
+    name: str
+    quantity: float
+    cost_per_unit: float
+    total_cost: float
+
+
 class OrderItem(BaseModel):
     """A single bouquet line item within an order"""
     bouquet_type: str = Field(..., min_length=1, max_length=200, description="Bouquet type/name")
     size: str = Field(..., description="Bouquet size (small/medium/large)")
     quantity: int = Field(1, ge=1, description="Number of this bouquet")
+    actual_materials: Optional[List[ActualMaterial]] = Field(None, description="Materials actually used (overrides recipe for cost)")
 
 
 class OrderBase(BaseModel):

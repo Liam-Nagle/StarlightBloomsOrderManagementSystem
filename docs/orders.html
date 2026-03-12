@@ -21,6 +21,7 @@
                 <a href="bouquets.html" class="nav-link">Bouquets</a>
                 <a href="materials.html" class="nav-link">Materials</a>
                 <a href="reports.html" class="nav-link">Reports</a>
+                <a href="calculator.html" class="nav-link">Calculator</a>
             </div>
         </div>
     </nav>
@@ -149,6 +150,26 @@
         </div>
     </div>
 
+    <!-- Actual Materials Modal -->
+    <div class="modal" id="actualMaterialsModal">
+        <div class="modal-content" style="max-width: 700px;">
+            <div class="modal-header">
+                <h3>Actual Materials Used</h3>
+                <button class="modal-close" id="closeActualMaterialsModal">&times;</button>
+            </div>
+            <div style="padding: var(--spacing-lg);">
+                <p style="margin: 0 0 var(--spacing-md) 0; color: var(--text-secondary); font-size: 0.875rem;">
+                    Record the materials actually used to fulfil this order. This overrides the bouquet recipe for cost calculation.
+                </p>
+                <div id="actualMaterialsAccordion"></div>
+                <div class="form-actions" style="margin-top: var(--spacing-lg);">
+                    <button type="button" class="btn btn-secondary" id="cancelActualMaterialsBtn">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="saveActualMaterialsBtn">Save Actual Materials</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div id="toastContainer"></div>
 
     <script src="js/config.js"></script>
@@ -157,6 +178,7 @@
     <script src="js/components/toast.js"></script>
     <script src="js/mobile-nav.js"></script>
     <script src="js/components/modal.js"></script>
+    <script src="js/components/searchable-select.js"></script>
     <script src="js/pages/orders.js"></script>
 </body>
 </html>

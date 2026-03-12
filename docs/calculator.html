@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calculator - Starlight Blooms</title>
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="css/tables.css">
+    <link rel="stylesheet" href="css/forms.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-brand">
+                <h1>🌸 Starlight Blooms</h1>
+            </div>
+            <button class="menu-toggle" aria-label="Toggle menu">☰</button>
+            <div class="nav-menu">
+                <a href="index.html" class="nav-link">Dashboard</a>
+                <a href="orders.html" class="nav-link">Orders</a>
+                <a href="bouquets.html" class="nav-link">Bouquets</a>
+                <a href="materials.html" class="nav-link">Materials</a>
+                <a href="reports.html" class="nav-link">Reports</a>
+                <a href="calculator.html" class="nav-link active">Calculator</a>
+            </div>
+        </div>
+    </nav>
+    <div class="menu-overlay"></div>
+
+    <div class="container">
+        <main class="main-content">
+            <div class="page-header">
+                <h2>Bouquet Calculator</h2>
+                <button class="btn btn-secondary" id="clearBtn">Clear</button>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 320px; gap: var(--spacing-xl); align-items: start;">
+
+                <!-- Left: Materials Input -->
+                <div>
+                    <div class="form-group">
+                        <label for="calcSize">Size *</label>
+                        <select id="calcSize" class="filter-select" style="width: 100%; max-width: 260px;">
+                            <option value="">Select size</option>
+                            <option value="small">Small (£10 labour)</option>
+                            <option value="medium">Medium (£15 labour)</option>
+                            <option value="large">Large (£20 labour)</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group" style="margin-top: var(--spacing-lg);">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--spacing-sm);">
+                            <label style="margin: 0;">Materials</label>
+                            <button type="button" class="btn btn-secondary" id="addCalcMaterialBtn" style="padding: 0.25rem 0.75rem; font-size: 0.875rem;">+ Add Material</button>
+                        </div>
+                        <div id="calcMaterialsContainer"></div>
+                    </div>
+                </div>
+
+                <!-- Right: Pricing Preview -->
+                <div id="calcPricingPreview" style="background: var(--bg-light); padding: var(--spacing-lg); border-radius: var(--radius-md); position: sticky; top: var(--spacing-lg);">
+                    <h3 style="margin: 0 0 var(--spacing-md) 0; font-size: 1rem; text-transform: uppercase; color: var(--text-secondary); letter-spacing: 0.05em;">Pricing Preview</h3>
+                    <div style="display: grid; gap: var(--spacing-md);">
+                        <div>
+                            <p style="margin: 0; font-size: 0.75rem; color: var(--text-secondary);">Total Cost</p>
+                            <p style="margin: 0; font-size: 1.5rem; font-weight: 700;">£<span id="calcTotalCost">0.00</span></p>
+                        </div>
+                        <div>
+                            <p style="margin: 0; font-size: 0.75rem; color: var(--text-secondary);">Calculated Sale Price</p>
+                            <p style="margin: 0; font-size: 1.5rem; font-weight: 700; color: var(--primary-color);">£<span id="calcSalePrice">0.00</span></p>
+                        </div>
+                        <div>
+                            <p style="margin: 0; font-size: 0.75rem; color: var(--text-secondary);">Profit</p>
+                            <p style="margin: 0; font-size: 1.25rem; font-weight: 600; color: var(--success-color);">£<span id="calcProfit">0.00</span></p>
+                        </div>
+                        <div>
+                            <p style="margin: 0; font-size: 0.75rem; color: var(--text-secondary);">Margin</p>
+                            <p style="margin: 0; font-size: 1.25rem; font-weight: 600;"><span id="calcMargin">0.0</span>%</p>
+                        </div>
+                    </div>
+                    <p id="calcPreviewNote" style="margin: var(--spacing-md) 0 0 0; font-size: 0.75rem; color: var(--text-secondary);">Select a size and add materials to see pricing.</p>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div id="toastContainer"></div>
+
+    <script src="js/config.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/components/toast.js"></script>
+    <script src="js/mobile-nav.js"></script>
+    <script src="js/components/searchable-select.js"></script>
+    <script src="js/pages/calculator.js"></script>
+</body>
+</html>

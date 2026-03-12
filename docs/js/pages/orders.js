@@ -5,14 +5,20 @@
 
 let orders = [];
 let bouquets = [];
+let allMaterials = [];
 let currentOrderId = null;
+let currentActualMaterialsOrderId = null;
 let modal = null;
+let actualMaterialsModal = null;
 let orderItemCounter = 0;
+let actualMaterialRowCounters = {};
 
 // Initialize page
 document.addEventListener('DOMContentLoaded', async () => {
     modal = new Modal('orderModal');
+    actualMaterialsModal = new Modal('actualMaterialsModal');
     await loadBouquets();
+    await loadMaterialsList();
     await loadOrders();
     setupEventListeners();
 });
@@ -22,6 +28,14 @@ async function loadBouquets() {
         bouquets = await API.bouquets.getAll();
     } catch (error) {
         showToast('Failed to load bouquets: ' + error.message, 'error');
+    }
+}
+
+async function loadMaterialsList() {
+    try {
+        allMaterials = await API.materials.getAll();
+    } catch (error) {
+        console.warn('Failed to load materials:', error.message);
     }
 }
 
@@ -98,6 +112,7 @@ function renderOrdersTable() {
                 <div class="table-actions">
                     <button class="action-btn action-btn-view" onclick="viewOrder('${orderId}')">View</button>
                     <button class="action-btn action-btn-edit" onclick="editOrder('${orderId}')">Edit</button>
+                    <button class="action-btn" style="background: var(--primary-color); color: white;" onclick="openActualMaterialsModal('${orderId}')">Materials</button>
                     <button class="action-btn action-btn-delete" onclick="deleteOrder('${orderId}', '${order.order_number}')">Delete</button>
                 </div>
             </td>
@@ -124,6 +139,10 @@ function setupEventListeners() {
     document.getElementById('statusFilter')?.addEventListener('change', loadOrders);
     document.getElementById('startDate')?.addEventListener('change', loadOrders);
     document.getElementById('endDate')?.addEventListener('change', loadOrders);
+
+    document.getElementById('closeActualMaterialsModal')?.addEventListener('click', () => actualMaterialsModal.close());
+    document.getElementById('cancelActualMaterialsBtn')?.addEventListener('click', () => actualMaterialsModal.close());
+    document.getElementById('saveActualMaterialsBtn')?.addEventListener('click', saveActualMaterials);
 }
 
 // Add a bouquet item row to the order form
@@ -330,3 +349,202 @@ async function deleteOrder(id, orderNumber) {
 window.viewOrder = viewOrder;
 window.editOrder = editOrder;
 window.deleteOrder = deleteOrder;
+window.openActualMaterialsModal = openActualMaterialsModal;
+
+// ---------------------------------------------------------------------------
+// Actual Materials Modal
+// ---------------------------------------------------------------------------
+
+async function openActualMaterialsModal(orderId) {
+    const order = orders.find(o => o.id === orderId || o._id === orderId);
+    if (!order) { showToast('Order not found', 'error'); return; }
+
+    currentActualMaterialsOrderId = orderId;
+    actualMaterialRowCounters = {};
+
+    const accordion = document.getElementById('actualMaterialsAccordion');
+    accordion.innerHTML = '';
+
+    const items = order.items || [];
+
+    items.forEach((item, idx) => {
+        const containerId = `actual-materials-item-${idx}`;
+        actualMaterialRowCounters[containerId] = 0;
+
+        const section = document.createElement('div');
+        section.style.cssText = 'border: 1px solid var(--border-color); border-radius: var(--radius-md); margin-bottom: var(--spacing-md); overflow: hidden;';
+
+        const header = document.createElement('div');
+        header.style.cssText = 'padding: var(--spacing-sm) var(--spacing-md); background: var(--bg-light); cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-weight: 600;';
+        header.innerHTML = `
+            <span>${item.bouquet_type} (${item.size}) x${item.quantity}</span>
+            <span style="font-size: 0.75rem; color: var(--text-secondary);">Cost: £<span class="item-cost-total" id="${containerId}-total">0.00</span></span>
+        `;
+
+        const body = document.createElement('div');
+        body.style.cssText = 'padding: var(--spacing-md);';
+
+        const rowsContainer = document.createElement('div');
+        rowsContainer.id = containerId;
+        body.appendChild(rowsContainer);
+
+        const addBtn = document.createElement('button');
+        addBtn.type = 'button';
+        addBtn.className = 'btn btn-secondary';
+        addBtn.style.cssText = 'margin-top: var(--spacing-sm); padding: 0.25rem 0.75rem; font-size: 0.875rem;';
+        addBtn.textContent = '+ Add Material';
+        addBtn.addEventListener('click', () => addActualMaterialRow(containerId));
+        body.appendChild(addBtn);
+
+        section.appendChild(header);
+        section.appendChild(body);
+        accordion.appendChild(section);
+
+        // Pre-fill: use actual_materials if set, else fall back to bouquet recipe
+        const prefillMaterials = item.actual_materials && item.actual_materials.length > 0
+            ? item.actual_materials
+            : getBouquetRecipeMaterials(item.bouquet_type, item.size);
+
+        if (prefillMaterials.length > 0) {
+            prefillMaterials.forEach(m => addActualMaterialRow(containerId, m));
+        } else {
+            addActualMaterialRow(containerId);
+        }
+    });
+
+    actualMaterialsModal.open();
+}
+
+function getBouquetRecipeMaterials(bouquetType, size) {
+    const bouquet = bouquets.find(b =>
+        b.name.toLowerCase() === bouquetType.toLowerCase() && b.size === size
+    );
+    return bouquet ? (bouquet.materials || []) : [];
+}
+
+function addActualMaterialRow(containerId, materialData = null) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+
+    const rowIdx = actualMaterialRowCounters[containerId]++;
+    const rowId = `${containerId}-row-${rowIdx}`;
+
+    const row = document.createElement('div');
+    row.id = rowId;
+    row.className = 'form-row';
+    row.style.cssText = 'align-items: end; margin-bottom: var(--spacing-sm);';
+
+    row.innerHTML = `
+        <div class="form-group" style="flex: 2;">
+            <label>Material</label>
+            <div class="material-select-container"></div>
+        </div>
+        <div class="form-group" style="flex: 1;">
+            <label>Qty</label>
+            <input type="number" class="actual-material-quantity" step="0.01" min="0.01" value="${materialData?.quantity || 1}">
+        </div>
+        <div class="form-group" style="flex: 1;">
+            <label>Cost/Unit (£)</label>
+            <input type="number" class="actual-material-cost-per-unit" step="0.01" min="0" value="${materialData?.cost_per_unit ?? ''}">
+        </div>
+        <button type="button" class="btn btn-danger" onclick="removeActualMaterialRow('${containerId}', '${rowId}')" style="height: 38px;">✕</button>
+    `;
+
+    container.appendChild(row);
+
+    const options = allMaterials.map(m => ({
+        value: m.id,
+        label: m.name,
+        meta: `${formatCurrency(m.cost_per_unit)}/${m.unit}`
+    }));
+
+    const selectContainer = row.querySelector('.material-select-container');
+    const searchableSelect = new SearchableSelect(selectContainer, options, () => {
+        const selected = allMaterials.find(m => m.id === searchableSelect.getValue());
+        if (selected) {
+            row.querySelector('.actual-material-cost-per-unit').value = selected.cost_per_unit.toFixed(2);
+        }
+        updateItemCostTotal(containerId);
+    });
+
+    if (materialData?.material_id) {
+        searchableSelect.setValue(materialData.material_id);
+    }
+
+    row.searchableSelect = searchableSelect;
+
+    row.querySelector('.actual-material-quantity').addEventListener('input', () => updateItemCostTotal(containerId));
+    row.querySelector('.actual-material-cost-per-unit').addEventListener('input', () => updateItemCostTotal(containerId));
+
+    updateItemCostTotal(containerId);
+}
+
+window.removeActualMaterialRow = function(containerId, rowId) {
+    document.getElementById(rowId)?.remove();
+    updateItemCostTotal(containerId);
+};
+
+function updateItemCostTotal(containerId) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+
+    let total = 0;
+    container.querySelectorAll('.form-row').forEach(row => {
+        const qty = parseFloat(row.querySelector('.actual-material-quantity')?.value) || 0;
+        const cpu = parseFloat(row.querySelector('.actual-material-cost-per-unit')?.value) || 0;
+        total += qty * cpu;
+    });
+
+    const totalEl = document.getElementById(`${containerId}-total`);
+    if (totalEl) totalEl.textContent = total.toFixed(2);
+}
+
+function getActualMaterialsFromContainer(containerId) {
+    const container = document.getElementById(containerId);
+    if (!container) return [];
+
+    const result = [];
+    container.querySelectorAll('.form-row').forEach(row => {
+        const materialId = row.searchableSelect?.getValue();
+        const quantity = parseFloat(row.querySelector('.actual-material-quantity')?.value) || 0;
+        const costPerUnit = parseFloat(row.querySelector('.actual-material-cost-per-unit')?.value) || 0;
+
+        if (materialId && quantity > 0) {
+            const material = allMaterials.find(m => m.id === materialId);
+            result.push({
+                material_id: materialId,
+                name: material?.name || '',
+                quantity,
+                cost_per_unit: costPerUnit,
+                total_cost: parseFloat((quantity * costPerUnit).toFixed(2))
+            });
+        }
+    });
+
+    return result;
+}
+
+async function saveActualMaterials() {
+    const order = orders.find(o => o.id === currentActualMaterialsOrderId || o._id === currentActualMaterialsOrderId);
+    if (!order) { showToast('Order not found', 'error'); return; }
+
+    const items = (order.items || []).map((item, idx) => {
+        const containerId = `actual-materials-item-${idx}`;
+        const actualMaterials = getActualMaterialsFromContainer(containerId);
+        return {
+            bouquet_type: item.bouquet_type,
+            size: item.size,
+            quantity: item.quantity,
+            actual_materials: actualMaterials.length > 0 ? actualMaterials : null
+        };
+    });
+
+    try {
+        await API.orders.update(currentActualMaterialsOrderId, { items });
+        showToast('Actual materials saved. Cost recalculated.', 'success');
+        actualMaterialsModal.close();
+        await loadOrders();
+    } catch (error) {
+        showToast('Failed to save actual materials: ' + error.message, 'error');
+    }
+}

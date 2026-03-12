@@ -308,12 +308,21 @@ async def calculate_order_profit(
             bouquet_type = item.get("bouquet_type")
             size = item.get("size", "medium")
             quantity = item.get("quantity", 1)
+            actual_materials = item.get("actual_materials")
         else:
             bouquet_type = item.bouquet_type
             size = item.size
             quantity = item.quantity
+            actual_materials = item.actual_materials
 
-        total_cost += await _get_bouquet_cost(bouquet_type, size, quantity, db)
+        if actual_materials:
+            item_cost = sum(
+                float(m.get("total_cost", 0) if isinstance(m, dict) else m.total_cost)
+                for m in actual_materials
+            )
+            total_cost += round(item_cost * quantity, 2)
+        else:
+            total_cost += await _get_bouquet_cost(bouquet_type, size, quantity, db)
 
     profit = total_price - total_cost
     profit_margin = (profit / total_price * 100) if total_price > 0 else 0

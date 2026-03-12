@@ -167,8 +167,8 @@ async def update_order(order_id: str, order_update: OrderUpdate):
         if isinstance(update_data["date"], date) and not isinstance(update_data["date"], datetime):
             update_data["date"] = datetime.combine(update_data["date"], datetime.min.time())
 
-    # Recalculate profit if total_price or bouquet changed
-    if "total_price" in update_data or "bouquet_type" in update_data or "size" in update_data:
+    # Recalculate profit if total_price, bouquet, or items changed
+    if "total_price" in update_data or "bouquet_type" in update_data or "size" in update_data or "items" in update_data:
         from backend.services.order_service import calculate_order_profit
         # Merge current order with updates for calculation
         temp_order = {**current_order, **update_data}
