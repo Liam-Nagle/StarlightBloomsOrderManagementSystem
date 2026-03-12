@@ -6,6 +6,8 @@
 let materials = [];
 let currentMaterialId = null;
 let modal = null;
+let sortCol = null;
+let sortDir = 'asc';
 
 // Initialize page
 document.addEventListener('DOMContentLoaded', async () => {
@@ -30,15 +32,40 @@ function renderMaterialsTable() {
     const tbody = document.getElementById('materialsTableBody');
     const emptyState = document.getElementById('emptyState');
     const searchQuery = document.getElementById('searchInput')?.value.toLowerCase() || '';
+    const stockFilter = document.getElementById('stockFilter')?.value || '';
 
-    // Filter materials by search query
     let filteredMaterials = materials;
+
     if (searchQuery) {
-        filteredMaterials = materials.filter(m =>
+        filteredMaterials = filteredMaterials.filter(m =>
             m.name.toLowerCase().includes(searchQuery) ||
+            m.colour?.toLowerCase().includes(searchQuery) ||
             m.supplier?.toLowerCase().includes(searchQuery) ||
             m.product_number?.toLowerCase().includes(searchQuery)
         );
+    }
+
+    if (stockFilter) {
+        filteredMaterials = filteredMaterials.filter(m => {
+            const stock = m.current_stock ?? 0;
+            const threshold = m.low_stock_threshold ?? 10;
+            if (stockFilter === 'out_of_stock') return stock <= 0;
+            if (stockFilter === 'low_stock') return stock > 0 && stock <= threshold;
+            if (stockFilter === 'in_stock') return stock > 0;
+            return true;
+        });
+    }
+
+    if (sortCol) {
+        filteredMaterials = [...filteredMaterials].sort((a, b) => {
+            let aVal = a[sortCol] ?? '';
+            let bVal = b[sortCol] ?? '';
+            if (typeof aVal === 'string') aVal = aVal.toLowerCase();
+            if (typeof bVal === 'string') bVal = bVal.toLowerCase();
+            if (aVal < bVal) return sortDir === 'asc' ? -1 : 1;
+            if (aVal > bVal) return sortDir === 'asc' ? 1 : -1;
+            return 0;
+        });
     }
 
     if (filteredMaterials.length === 0) {
@@ -60,6 +87,7 @@ function renderMaterialsTable() {
             <tr>
                 <td><strong>${material.name}</strong></td>
                 <td><span class="badge badge-${material.type === 'Flower' ? 'success' : 'info'}">${material.type}</span></td>
+                <td>${material.colour || '-'}</td>
                 <td>${material.supplier || '-'}</td>
                 <td>${material.product_number || '-'}</td>
                 <td>${formatCurrency(material.cost_per_unit)}</td>
@@ -93,6 +121,25 @@ function setupEventListeners() {
 
     document.getElementById('searchInput')?.addEventListener('input', renderMaterialsTable);
     document.getElementById('typeFilter')?.addEventListener('change', loadMaterials);
+    document.getElementById('stockFilter')?.addEventListener('change', renderMaterialsTable);
+
+    document.querySelectorAll('th.sortable').forEach(th => {
+        th.addEventListener('click', () => {
+            const col = th.dataset.col;
+            if (sortCol === col) {
+                sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+            } else {
+                sortCol = col;
+                sortDir = 'asc';
+            }
+            document.querySelectorAll('th.sortable').forEach(h => {
+                h.classList.remove('sort-asc', 'sort-desc');
+                h.querySelector('.sort-icon').textContent = '↕';
+            });
+            th.classList.add(sortDir === 'asc' ? 'sort-asc' : 'sort-desc');
+            renderMaterialsTable();
+        });
+    });
 }
 
 // Handle form submission
@@ -102,6 +149,7 @@ async function handleFormSubmit(e) {
     const formData = {
         name: document.getElementById('name').value.trim(),
         type: document.getElementById('type').value,
+        colour: document.getElementById('colour').value.trim() || null,
         supplier: document.getElementById('supplier').value.trim() || null,
         product_number: document.getElementById('productNumber').value.trim() || null,
         cost_per_unit: parseFloat(document.getElementById('costPerUnit').value),
@@ -137,6 +185,7 @@ async function editMaterial(id) {
     // Populate form
     document.getElementById('name').value = material.name;
     document.getElementById('type').value = material.type;
+    document.getElementById('colour').value = material.colour || '';
     document.getElementById('supplier').value = material.supplier || '';
     document.getElementById('productNumber').value = material.product_number || '';
     document.getElementById('costPerUnit').value = material.cost_per_unit;

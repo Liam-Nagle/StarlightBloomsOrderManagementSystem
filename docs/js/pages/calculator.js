@@ -24,6 +24,18 @@ function setupCalcEventListeners() {
     document.getElementById('calcSize')?.addEventListener('change', updateCalcPricingPreview);
     document.getElementById('addCalcMaterialBtn')?.addEventListener('click', () => addCalcMaterialRow());
     document.getElementById('clearBtn')?.addEventListener('click', clearCalculator);
+    document.getElementById('calcStockFilter')?.addEventListener('change', applyCalcStockFilter);
+}
+
+function getCalcMaterialOptions() {
+    return buildMaterialOptions(calcMaterials, document.getElementById('calcStockFilter')?.value || '');
+}
+
+function applyCalcStockFilter() {
+    const options = getCalcMaterialOptions();
+    document.querySelectorAll('#calcMaterialsContainer .form-row').forEach(row => {
+        row.searchableSelect?.updateOptions(options);
+    });
 }
 
 function addCalcMaterialRow(materialData = null) {
@@ -49,14 +61,8 @@ function addCalcMaterialRow(materialData = null) {
 
     container.appendChild(row);
 
-    const options = calcMaterials.map(m => ({
-        value: m.id,
-        label: m.name,
-        meta: `${formatCurrency(m.cost_per_unit)}/${m.unit}`
-    }));
-
     const selectContainer = row.querySelector('.material-select-container');
-    const searchableSelect = new SearchableSelect(selectContainer, options, () => updateCalcPricingPreview());
+    const searchableSelect = new SearchableSelect(selectContainer, getCalcMaterialOptions(), () => updateCalcPricingPreview());
 
     if (materialData?.material_id) {
         searchableSelect.setValue(materialData.material_id);

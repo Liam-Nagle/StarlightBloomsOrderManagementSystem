@@ -143,6 +143,7 @@ function setupEventListeners() {
     document.getElementById('closeActualMaterialsModal')?.addEventListener('click', () => actualMaterialsModal.close());
     document.getElementById('cancelActualMaterialsBtn')?.addEventListener('click', () => actualMaterialsModal.close());
     document.getElementById('saveActualMaterialsBtn')?.addEventListener('click', saveActualMaterials);
+    document.getElementById('actualMaterialsStockFilter')?.addEventListener('change', applyActualMaterialsStockFilter);
 }
 
 // Add a bouquet item row to the order form
@@ -362,6 +363,9 @@ async function openActualMaterialsModal(orderId) {
     currentActualMaterialsOrderId = orderId;
     actualMaterialRowCounters = {};
 
+    const stockFilterEl = document.getElementById('actualMaterialsStockFilter');
+    if (stockFilterEl) stockFilterEl.value = '';
+
     const accordion = document.getElementById('actualMaterialsAccordion');
     accordion.innerHTML = '';
 
@@ -415,6 +419,14 @@ async function openActualMaterialsModal(orderId) {
     actualMaterialsModal.open();
 }
 
+function applyActualMaterialsStockFilter() {
+    const stockFilter = document.getElementById('actualMaterialsStockFilter')?.value || '';
+    const options = buildMaterialOptions(allMaterials, stockFilter);
+    document.querySelectorAll('#actualMaterialsAccordion .form-row').forEach(row => {
+        row.searchableSelect?.updateOptions(options);
+    });
+}
+
 function getBouquetRecipeMaterials(bouquetType, size) {
     const bouquet = bouquets.find(b =>
         b.name.toLowerCase() === bouquetType.toLowerCase() && b.size === size
@@ -452,14 +464,9 @@ function addActualMaterialRow(containerId, materialData = null) {
 
     container.appendChild(row);
 
-    const options = allMaterials.map(m => ({
-        value: m.id,
-        label: m.name,
-        meta: `${formatCurrency(m.cost_per_unit)}/${m.unit}`
-    }));
-
     const selectContainer = row.querySelector('.material-select-container');
-    const searchableSelect = new SearchableSelect(selectContainer, options, () => {
+    const stockFilter = document.getElementById('actualMaterialsStockFilter')?.value || '';
+    const searchableSelect = new SearchableSelect(selectContainer, buildMaterialOptions(allMaterials, stockFilter), () => {
         const selected = allMaterials.find(m => m.id === searchableSelect.getValue());
         if (selected) {
             row.querySelector('.actual-material-cost-per-unit').value = selected.cost_per_unit.toFixed(2);

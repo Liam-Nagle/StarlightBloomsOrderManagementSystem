@@ -7,6 +7,15 @@
     <link rel="stylesheet" href="css/main.css">
     <link rel="stylesheet" href="css/tables.css">
     <link rel="stylesheet" href="css/forms.css">
+    <style>
+        th.sortable { cursor: pointer; user-select: none; white-space: nowrap; }
+        th.sortable:hover { background: var(--bg-light); }
+        .sort-icon { font-size: 0.7rem; opacity: 0.4; }
+        th.sort-asc .sort-icon, th.sort-desc .sort-icon { opacity: 1; }
+        th.sort-asc .sort-icon::after { content: '↑'; }
+        th.sort-desc .sort-icon::after { content: '↓'; }
+        th.sort-asc .sort-icon, th.sort-desc .sort-icon { font-size: 0.8rem; }
+    </style>
 </head>
 <body>
     <nav class="navbar">
@@ -42,19 +51,26 @@
                     <option value="Flower">Flowers</option>
                     <option value="Hard Material">Hard Materials</option>
                 </select>
+                <select id="stockFilter" class="filter-select">
+                    <option value="">All Stock</option>
+                    <option value="in_stock">In Stock</option>
+                    <option value="low_stock">Low Stock</option>
+                    <option value="out_of_stock">Out of Stock</option>
+                </select>
             </div>
 
             <div class="table-container">
                 <table class="data-table" id="materialsTable">
                     <thead>
                         <tr>
-                            <th>Name</th>
-                            <th>Type</th>
-                            <th>Supplier</th>
+                            <th class="sortable" data-col="name">Name <span class="sort-icon">↕</span></th>
+                            <th class="sortable" data-col="type">Type <span class="sort-icon">↕</span></th>
+                            <th>Colour</th>
+                            <th class="sortable" data-col="supplier">Supplier <span class="sort-icon">↕</span></th>
                             <th>Product #</th>
-                            <th>Cost/Unit</th>
+                            <th class="sortable" data-col="cost_per_unit">Cost/Unit <span class="sort-icon">↕</span></th>
                             <th>Unit</th>
-                            <th>Stock</th>
+                            <th class="sortable" data-col="current_stock">Stock <span class="sort-icon">↕</span></th>
                             <th>Actions</th>
                         </tr>
                     </thead>
@@ -102,6 +118,11 @@
                         <label for="productNumber">Product Number</label>
                         <input type="text" id="productNumber" name="productNumber">
                     </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="colour">Colour</label>
+                    <input type="text" id="colour" name="colour" placeholder="e.g. Red, White, Blush Pink">
                 </div>
 
                 <div class="form-row">

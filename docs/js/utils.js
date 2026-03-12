@@ -110,6 +110,31 @@ function getFormData(form) {
 }
 
 /**
+ * Build SearchableSelect options from a materials array, with optional stock filter.
+ * @param {Array} materials - Full materials list
+ * @param {string} stockFilter - '', 'in_stock', 'low_stock', or 'out_of_stock'
+ * @returns {Array} Options array for SearchableSelect
+ */
+function buildMaterialOptions(materials, stockFilter = '') {
+    let filtered = materials;
+    if (stockFilter) {
+        filtered = materials.filter(m => {
+            const stock = m.current_stock ?? 0;
+            const threshold = m.low_stock_threshold ?? 10;
+            if (stockFilter === 'out_of_stock') return stock <= 0;
+            if (stockFilter === 'low_stock') return stock > 0 && stock <= threshold;
+            if (stockFilter === 'in_stock') return stock > 0;
+            return true;
+        });
+    }
+    return filtered.map(m => ({
+        value: m.id,
+        label: m.name,
+        meta: `${formatCurrency(m.cost_per_unit)}/${m.unit}`
+    }));
+}
+
+/**
  * Capitalize first letter
  * @param {string} string - String to capitalize
  * @returns {string} Capitalized string

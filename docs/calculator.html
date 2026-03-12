@@ -51,7 +51,15 @@
                     <div class="form-group" style="margin-top: var(--spacing-lg);">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--spacing-sm);">
                             <label style="margin: 0;">Materials</label>
-                            <button type="button" class="btn btn-secondary" id="addCalcMaterialBtn" style="padding: 0.25rem 0.75rem; font-size: 0.875rem;">+ Add Material</button>
+                            <div style="display: flex; gap: var(--spacing-sm); align-items: center;">
+                                <select id="calcStockFilter" class="filter-select" style="font-size: 0.8rem; padding: 0.25rem 0.5rem;">
+                                    <option value="">All materials</option>
+                                    <option value="in_stock">In stock only</option>
+                                    <option value="low_stock">Low stock only</option>
+                                    <option value="out_of_stock">Out of stock only</option>
+                                </select>
+                                <button type="button" class="btn btn-secondary" id="addCalcMaterialBtn" style="padding: 0.25rem 0.75rem; font-size: 0.875rem;">+ Add Material</button>
+                            </div>
                         </div>
                         <div id="calcMaterialsContainer"></div>
                     </div>

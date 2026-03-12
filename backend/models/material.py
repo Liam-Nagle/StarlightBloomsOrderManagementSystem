@@ -21,6 +21,7 @@ class MaterialBase(BaseModel):
     current_stock: Optional[float] = Field(None, ge=0, description="Current stock level")
     unit: Optional[str] = Field("stem", max_length=50, description="Unit of measurement (stem, each, meter)")
     low_stock_threshold: Optional[float] = Field(10, ge=0, description="Alert when stock falls below this level")
+    colour: Optional[str] = Field(None, max_length=100, description="Colour label (e.g. Red, White, Blush Pink)")
 
 
 class MaterialCreate(MaterialBase):
@@ -38,6 +39,7 @@ class MaterialUpdate(BaseModel):
     current_stock: Optional[float] = Field(None, ge=0)
     unit: Optional[str] = Field(None, max_length=50)
     low_stock_threshold: Optional[float] = Field(None, ge=0)
+    colour: Optional[str] = Field(None, max_length=100)
 
 
 class MaterialInDB(MaterialBase):

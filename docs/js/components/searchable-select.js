@@ -142,4 +142,20 @@ class SearchableSelect {
         this.filteredOptions = [...this.options];
         this.renderOptions();
     }
+
+    updateOptions(newOptions) {
+        const previousValue = this.getValue();
+        this.options = newOptions;
+        this.filteredOptions = [...newOptions];
+        this.renderOptions();
+        // Re-select previous value if it still exists in new options
+        if (previousValue && newOptions.find(o => o.value === previousValue)) {
+            this.setValue(previousValue);
+        } else if (previousValue) {
+            // Previous selection no longer in filtered list — clear it
+            this.input.value = '';
+            this.input.dataset.selectedValue = '';
+            this.selectedValue = null;
+        }
+    }
 }
