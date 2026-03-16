@@ -73,6 +73,7 @@ function renderBouquetsTable() {
                 <div class="table-actions">
                     <button class="action-btn action-btn-view" onclick="viewBouquet('${bouquet.id}')">View</button>
                     <button class="action-btn action-btn-edit" onclick="editBouquet('${bouquet.id}')">Edit</button>
+                    <button class="action-btn" style="background: var(--primary-color); color: white;" onclick="duplicateBouquet('${bouquet.id}')">Duplicate</button>
                     <button class="action-btn action-btn-delete" onclick="deleteBouquet('${bouquet.id}', '${bouquet.name}')">Delete</button>
                 </div>
             </td>
@@ -400,8 +401,33 @@ async function deleteBouquet(id, name) {
     }
 }
 
+// Duplicate bouquet — pre-fills the form as a new bouquet
+function duplicateBouquet(id) {
+    const bouquet = bouquets.find(b => b.id === id);
+    if (!bouquet) return;
+
+    currentBouquetId = null; // null = save as new
+    materialRowCounter = 0;
+    modal.setTitle('Add Bouquet (Copy of ' + bouquet.name + ')');
+    modal.resetForm();
+
+    document.getElementById('name').value = bouquet.name + ' (Copy)';
+    document.getElementById('size').value = bouquet.size;
+    document.getElementById('description').value = bouquet.description || '';
+    document.getElementById('imageUrl').value = bouquet.image_url || '';
+    document.getElementById('sellPrice').value = bouquet.sell_price;
+
+    const container = document.getElementById('materialsContainer');
+    container.innerHTML = '';
+    bouquet.materials.forEach(material => addMaterialRow(material));
+
+    updatePricingPreview();
+    modal.open();
+}
+
 // Make functions globally accessible for onclick handlers
 window.viewBouquet = viewBouquet;
 window.editBouquet = editBouquet;
 window.deleteBouquet = deleteBouquet;
+window.duplicateBouquet = duplicateBouquet;
 // removeMaterialRow is already defined as window.removeMaterialRow on line 148
