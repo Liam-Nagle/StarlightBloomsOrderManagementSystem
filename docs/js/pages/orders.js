@@ -94,7 +94,7 @@ function renderOrdersTable() {
 
         // Summarise items for table cell
         const itemsSummary = (order.items || [])
-            .map(i => `${i.bouquet_type} (${i.size.charAt(0).toUpperCase() + i.size.slice(1)})${i.quantity > 1 ? ` x${i.quantity}` : ''}`)
+            .map(i => `${i.bouquet_type} (${i.size.charAt(0).toUpperCase() + i.size.slice(1)})${i.quantity > 1 ? ` x${i.quantity}` : ''}${i.deluxe_packaging ? ' ✦' : ''}`)
             .join('<br>');
 
         return `
@@ -175,6 +175,10 @@ function addOrderItemRow(itemData = null) {
             <label>Qty</label>
             <input type="number" class="item-quantity" min="1" value="${itemData?.quantity || 1}" required>
         </div>
+        <div class="form-group" style="flex: 0 0 auto; justify-content: flex-end;">
+            <label style="font-size: 0.8rem;">Deluxe</label>
+            <input type="checkbox" class="item-deluxe" style="width: 18px; height: 18px; margin-top: 6px;" ${itemData?.deluxe_packaging ? 'checked' : ''}>
+        </div>
         <button type="button" class="btn btn-danger" onclick="removeOrderItemRow('${rowId}')" style="height: 38px;">✕</button>
     `;
 
@@ -222,7 +226,8 @@ function getItemsFromForm() {
             items.push({
                 bouquet_type: selectedOption.dataset.name,
                 size: selectedOption.dataset.size,
-                quantity: qty
+                quantity: qty,
+                deluxe_packaging: row.querySelector('.item-deluxe')?.checked || false
             });
         }
     });
@@ -287,7 +292,7 @@ function viewOrder(id) {
     const profitColor = profit >= 0 ? 'var(--success-color)' : 'var(--danger-color)';
 
     const itemsList = (order.items || [])
-        .map(i => `• ${i.bouquet_type} (${i.size}) x${i.quantity}`)
+        .map(i => `• ${i.bouquet_type} (${i.size}) x${i.quantity}${i.deluxe_packaging ? ' [Deluxe]' : ''}`)
         .join('\n');
 
     const deliveryLabel = order.delivery_type === 'next_day' ? 'Next Day Delivery' : 'Standard Delivery';

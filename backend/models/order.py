@@ -29,6 +29,7 @@ class OrderItem(BaseModel):
     size: str = Field(..., description="Bouquet size (small/medium/large)")
     quantity: int = Field(1, ge=1, description="Number of this bouquet")
     actual_materials: Optional[List[ActualMaterial]] = Field(None, description="Materials actually used (overrides recipe for cost)")
+    deluxe_packaging: Optional[bool] = Field(False, description="Whether this item includes deluxe packaging")
 
 
 class OrderBase(BaseModel):
